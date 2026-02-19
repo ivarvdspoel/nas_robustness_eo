@@ -9,7 +9,8 @@ class OpticalSystem:
                  sensor, 
                  M_b_n_TGT, 
                  SNR,
-                 wavelength=0.0008):
+                 wavelength=0.0008, 
+                 l_ref=100.0):
         
         # sensor: must be either 'sentinel' or 'venus'
         self.sensor = sensor
@@ -19,7 +20,7 @@ class OpticalSystem:
         self.wavelength = wavelength  # Wavelength in mm (800 nm)
         pixel_pitch = self.stored_params(sensor)['pixel_pitch']
         f_number = self.stored_params(sensor)['f_number']
-        self.l_ref = 100.0  # Reference luminance for noise addition
+        self.l_ref = l_ref  # Reference luminance for noise addition
         
         assert M_b_n_TGT <= M_b_n_SRC, 'Target MTF must be less than or equal to the source MTF'
         self.M_b_n_TGT = M_b_n_TGT # 
