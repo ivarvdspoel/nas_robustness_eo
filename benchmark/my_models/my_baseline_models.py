@@ -11,15 +11,18 @@ class ResNet18Encoder(nn.Module):
 
         self.model = timm.create_model(
             "resnet18",
-            pretrained=True,
+            pretrained=False,
             features_only=True,
             in_chans=in_channels,
-            out_indices=(0, 1, 2, 3, 4)  # 5 stages
+            out_indices=(0, 1, 2, 3, 4)
         )
 
+        # ensure all params are trainable
+        for param in self.model.parameters():
+            param.requires_grad = True
+
     def forward(self, x):
-        features = self.model(x)
-        return features
+        return self.model(x)
     
 import torch
 import torch.nn as nn

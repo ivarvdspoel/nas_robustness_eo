@@ -203,6 +203,131 @@ class OpticalSystem:
             return psf_convolved_data
 
 
+# CONSTANTS
+CROP_SIZE = (72, 72)
+S2_RESOLUTION = 10
+PHISAT2_RESOLUTION = 4.75
+BBOX_SIZE = 20140  # in metres
+BBOX_SIZE_CROPPED = 19456  # in metres
+S2_BANDS = ["B02", "B03", "B04", "B08", "B05", "B06", "B07"]
+S2_PAN_BANDS = ["B02", "B03", "B04", "PAN", "B08", "B05", "B06", "B07"]
+L1A_ABSOLUTE_SHIFTS = [6.329, 5.889, 5.339, 4.622, 3.785, 2.842, 1.796, 0]
+L1A_RELATIVE_SHIFTS = [
+    0,
+    1.105,
+    1.046,
+    0.943,
+    0.837,
+    0.717,
+    0.55,
+    0.44,
+]  # these values are in reverse order wrt the absolute shifts
+L1A_RAND_STD = 0.4
+L1A_RAND_MEAN = 0.0
+PAN_WEIGHTS = [0.21594369, 0.28731533, 0.25719303, 0.0, 0.12275664, 0.11679131, 0.0]
+
+
+# class ProcessingLevels(Enum):
+#     L1A = "L1A"
+#     L1B = "L1B"
+#     L1C = "L1C"
+
+
+def get_shifts_l1a(num_bands):
+    mis_amplitude = np.random.normal(L1A_RAND_MEAN, L1A_RAND_STD, size=(num_bands,)) \
+                    + np.array(L1A_RELATIVE_SHIFTS[:num_bands])
+
+    mis_angle = np.random.uniform(0, 2 * np.pi, size=(num_bands,))
+
+    shifts = np.stack([
+        mis_amplitude * np.cos(mis_angle),
+        mis_amplitude * np.sin(mis_angle)
+    ], axis=1)
+
+    shifts[0] = [0.0, 0.0]  # reference band
+    shifts = np.flip(np.cumsum(shifts, axis=0), axis=0)
+
+    return shifts  # shape: (C, 2)
+
+def get_shifts_l1b(num_bands, rand_std):
+    mis_amplitude = np.random.normal(0, rand_std, size=(num_bands,))
+    mis_angle = np.random.uniform(0, 2 * np.pi, size=(num_bands,))
+
+    shifts = np.stack([
+        mis_amplitude * np.cos(mis_angle),
+        mis_amplitude * np.sin(mis_angle)
+    ], axis=1)
+
+    shifts[2] = [0.0, 0.0]  # reference band (like original)
+
+    return shifts  # shape: (C, 2)
+
+import cv2
+import numpy as np
+
+def apply_band_misalignment(
+    img,
+    processing_level="L1A",
+    rand_std=1,
+    interpolation=cv2.INTER_LINEAR,
+    border_value=0,
+    channels_first=True
+):
+    """
+    Apply band misalignment to a numpy image.
+
+    Args:
+        img: np.ndarray
+            Shape (C, H, W) or (H, W, C)
+        processing_level: "L1A" or "L1B"
+        rand_std: std for L1B shifts
+        interpolation: cv2 interpolation
+        border_value: fill value
+        channels_first: whether input is (C, H, W)
+
+    Returns:
+        shifted_img: same shape as input
+        shifts: (C, 2) array of (dx, dy)
+    """
+
+    # ---- Ensure (C, H, W) ----
+    if not channels_first:
+        img = np.moveaxis(img, -1, 0)
+
+    C, H, W = img.shape
+
+    # ---- Generate shifts ----
+    if processing_level == "L1A":
+        shifts = get_shifts_l1a(C)
+    else:
+        shifts = get_shifts_l1b(C, rand_std)
+
+    # ---- Apply shifts ----
+    shifted = np.zeros_like(img)
+
+    for b in range(C):
+        dx, dy = shifts[b]
+
+        M = np.array([
+            [1, 0, dx],
+            [0, 1, dy]
+        ], dtype=np.float32)
+
+        shifted[b] = cv2.warpAffine(
+            img[b],
+            M,
+            dsize=(W, H),
+            flags=interpolation,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=border_value
+        )
+
+    # ---- Restore original layout ----
+    if not channels_first:
+        shifted = np.moveaxis(shifted, 0, -1)
+
+    return shifted, shifts
+
 if __name__ == '__main__':
     # Example usage
     venus_optics = OpticalSystem('venus', 0.2, SNR=5)
