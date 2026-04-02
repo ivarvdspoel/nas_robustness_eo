@@ -15,6 +15,32 @@ def compute_my_miou_from_preds(preds, labels, num_classes=4):
 
     return (intersection / union).mean().item()
 
+def compute_miou_per_sample(preds, labels, num_classes=4):
+    """
+    preds, labels: (N, H, W)
+    returns: (N,) tensor with mIoU per sample
+    """
+    N = preds.shape[0]
+    miou_per_sample = torch.zeros(N)
+
+    for i in range(N):
+        ious = []
+        for cls in range(num_classes):
+            pred_mask = (preds[i] == cls)
+            label_mask = (labels[i] == cls)
+
+            union = (pred_mask | label_mask).sum()
+            if union == 0:
+                continue  # ignore absent classes
+            inter = (pred_mask & label_mask).sum()
+            ious.append(inter.float() / union.float())
+
+        if len(ious) == 0:
+            miou_per_sample[i] = 0.0
+        else:
+            miou_per_sample[i] = torch.stack(ious).mean()
+
+    return miou_per_sample
 
 def compute_miou(model, dataloader, num_classes=4, device="cpu"):
     intersection = torch.zeros(num_classes, device=device)

@@ -1,3 +1,4 @@
+import torch.nn.functional as F
 import torch
 import torch.nn as nn
 from torchvision import models
@@ -34,10 +35,9 @@ class EfficientNetB0Encoder(nn.Module):
     def __init__(self, in_channels=7):
         super().__init__()
 
-        # features_only=True makes timm return multi-scale feature maps
         self.model = timm.create_model(
             "efficientnet_b0",
-            pretrained=True,
+            pretrained=False,
             features_only=True,
             in_chans=in_channels,
             out_indices=(0, 1, 2, 3, 4)  # 5 resolution stages
@@ -55,14 +55,14 @@ class MobileOneS0Encoder(nn.Module):
 
         self.model = timm.create_model(
             "mobileone_s0",
-            pretrained=True,
+            pretrained=False,
             features_only=True,
             in_chans=in_channels
         )
 
     def forward(self, x):
         features = self.model(x)
-        return features  # already returns 5 feature maps
+        return features 
 
 
 class ResNet18UNet(nn.Module):
@@ -77,8 +77,6 @@ class ResNet18UNet(nn.Module):
             features = self.encoder(dummy_input)
             feature_shapes = [f.shape for f in features]
         
-        # 2. Pass output_shape=input_res to the decoder
-        # This tells the final Upsample layer exactly what size to target
         self.decoder = UNetDecoder(
             encoder_shapes=feature_shapes, 
             num_classes=num_classes,

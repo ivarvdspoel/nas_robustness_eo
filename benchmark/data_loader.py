@@ -5,7 +5,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data.distributed import DistributedSampler
 
 class SegmentationDataset(Dataset):
-    def __init__(self, root_dir, split='TrainVal', transform=None):
+    def __init__(self, root_dir, split='TrainVal', transform=None, remove_channel=None):
         """
         Args:
             root_dir (string): Directory with all the images and masks.
@@ -15,6 +15,7 @@ class SegmentationDataset(Dataset):
         self.root_dir = root_dir
         self.split = split
         self.transform = transform
+        self.remove_channel = remove_channel
 
         # ==== Define class names and number of classes ====
         self.classes = ['Background', 'BurntArea', 'Cloud', 'Waterbodies']
@@ -50,10 +51,21 @@ class SegmentationDataset(Dataset):
         mask_path = self.mask_paths[idx]
 
         image = np.load(img_path)
-        if image.shape[-1] == 7:  # Assuming 7 channels
+
+        # Convert to [C, H, W]
+        if image.shape[-1] == 7:
             image = image.transpose(2, 0, 1)
+
+        # Remove a specific channel
+        if self.remove_channel is not None:
+            image = np.concatenate(
+                [image[:self.remove_channel], image[self.remove_channel+1:]],
+                axis=0
+            )  # shape -> [6, H, W]
+
         mask = np.load(mask_path)
-        if mask.shape[-1] == 4:  # Assuming 7 channels
+
+        if mask.shape[-1] == 4:
             mask = mask.transpose(2, 0, 1)
 
         if self.transform:
@@ -62,16 +74,33 @@ class SegmentationDataset(Dataset):
 
         return image, mask
 
+    # def __getitem__(self, idx):
+    #     img_path = self.image_paths[idx]
+    #     mask_path = self.mask_paths[idx]
+
+    #     image = np.load(img_path)
+    #     if image.shape[-1] == 7:  # Assuming 7 channels
+    #         image = image.transpose(2, 0, 1)
+    #     mask = np.load(mask_path)
+    #     if mask.shape[-1] == 4:  # Assuming 7 channels
+    #         mask = mask.transpose(2, 0, 1)
+
+    #     if self.transform:
+    #         image = self.transform(image)
+    #         mask = self.transform(mask)
+
+    #     return image, mask
+
 
 class SegmentationDataModule(LightningDataModule):
-    def __init__(self, root_dir, batch_size=8, num_workers=1, transform=None, val_split=0.3):
+    def __init__(self, root_dir, batch_size=8, num_workers=1, transform=None, val_split=0.3, remove_channel=None):
         super().__init__()
         self.root_dir = root_dir
         self.batch_size = batch_size
         self.transform = transform
         self.num_workers = num_workers
         self.val_split = val_split
-
+        self.remove_channel = remove_channel
         self.setup()
 
     def prepare_data(self):
@@ -83,6 +112,7 @@ class SegmentationDataModule(LightningDataModule):
             root_dir=self.root_dir,
             split='TrainVal',
             transform=self.transform,
+            remove_channel=self.remove_channel
         )
 
         # Store class info for external access
@@ -106,6 +136,7 @@ class SegmentationDataModule(LightningDataModule):
                 root_dir=self.root_dir,
                 split='Test',
                 transform=self.transform,
+                remove_channel=self.remove_channel
             )
 
     def train_dataloader(self):
