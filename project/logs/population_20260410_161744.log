@@ -1,0 +1,134 @@
+2026-04-10 16:17:44,180 - model_box.NAS.core.population - INFO - Initialized population with 15 individuals, max_layers=5, max_parameters=5000000, device=cuda
+2026-04-10 16:17:44,203 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:44,203 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:44,330 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 23,537,024 > M: 20,000,000
+2026-04-10 16:17:44,333 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:17:44,333 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:17:44,376 - model_box.NAS.core.population - DEBUG - Model size: 17980 parameters
+2026-04-10 16:17:44,376 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 17980
+2026-04-10 16:17:44,377 - model_box.NAS.core.population - DEBUG - Added individual 1/15 (attempt 2, failed: 1)
+2026-04-10 16:17:44,382 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:44,382 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:45,064 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 130,441,948 > M: 20,000,000
+2026-04-10 16:17:45,068 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:17:45,068 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:17:45,108 - model_box.NAS.core.population - DEBUG - Model size: 150162 parameters
+2026-04-10 16:17:45,108 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 150162
+2026-04-10 16:17:45,109 - model_box.NAS.core.population - DEBUG - Added individual 2/15 (attempt 4, failed: 2)
+2026-04-10 16:17:45,113 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:17:45,113 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:17:45,757 - model_box.NAS.core.population - DEBUG - Model size: 94794250 parameters
+2026-04-10 16:17:45,757 - model_box.NAS.core.population - WARNING - Model too large: 94794250 parameters (max: 5000000)
+2026-04-10 16:17:45,763 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:45,764 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:45,991 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 43,840,434 > M: 20,000,000
+2026-04-10 16:17:45,995 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:17:45,995 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:17:46,279 - model_box.NAS.core.population - DEBUG - Model size: 12904742 parameters
+2026-04-10 16:17:46,279 - model_box.NAS.core.population - WARNING - Model too large: 12904742 parameters (max: 5000000)
+2026-04-10 16:17:46,283 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:17:46,283 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:17:46,394 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 21,271,845 > M: 20,000,000
+2026-04-10 16:17:46,397 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:17:46,397 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:17:47,619 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 236,499,550 > M: 20,000,000
+2026-04-10 16:17:47,626 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:47,626 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:47,962 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 63,466,515 > M: 20,000,000
+2026-04-10 16:17:47,963 - model_box.NAS.core.population - INFO - Population generation: 2/15 created (attempts: 10, failed: 8)
+2026-04-10 16:17:47,967 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:17:47,967 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:17:47,999 - model_box.NAS.core.population - DEBUG - Model size: 280606 parameters
+2026-04-10 16:17:47,999 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 280606
+2026-04-10 16:17:47,999 - model_box.NAS.core.population - DEBUG - Added individual 3/15 (attempt 11, failed: 8)
+2026-04-10 16:17:48,004 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:48,004 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:48,222 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 41,230,476 > M: 20,000,000
+2026-04-10 16:17:48,227 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:48,227 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:48,982 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 144,626,797 > M: 20,000,000
+2026-04-10 16:17:48,988 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:17:48,988 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:17:49,042 - model_box.NAS.core.population - DEBUG - Model size: 912636 parameters
+2026-04-10 16:17:49,043 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 912636
+2026-04-10 16:17:49,043 - model_box.NAS.core.population - DEBUG - Added individual 4/15 (attempt 14, failed: 10)
+2026-04-10 16:17:49,049 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:49,049 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:49,085 - model_box.NAS.core.population - DEBUG - Model size: 180171 parameters
+2026-04-10 16:17:49,085 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 180171
+2026-04-10 16:17:49,085 - model_box.NAS.core.population - DEBUG - Added individual 5/15 (attempt 15, failed: 10)
+2026-04-10 16:17:49,090 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:49,090 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:49,181 - model_box.NAS.core.population - DEBUG - Model size: 4863058 parameters
+2026-04-10 16:17:49,182 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 4863058
+2026-04-10 16:17:49,182 - model_box.NAS.core.population - DEBUG - Added individual 6/15 (attempt 16, failed: 10)
+2026-04-10 16:17:49,186 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:17:49,186 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:17:49,217 - model_box.NAS.core.population - DEBUG - Model size: 131521 parameters
+2026-04-10 16:17:49,217 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 131521
+2026-04-10 16:17:49,218 - model_box.NAS.core.population - DEBUG - Added individual 7/15 (attempt 17, failed: 10)
+2026-04-10 16:17:49,222 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:17:49,222 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:17:49,826 - model_box.NAS.core.population - DEBUG - Model size: 48737378 parameters
+2026-04-10 16:17:49,826 - model_box.NAS.core.population - WARNING - Model too large: 48737378 parameters (max: 5000000)
+2026-04-10 16:17:49,830 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:49,831 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:49,860 - model_box.NAS.core.population - DEBUG - Model size: 6061 parameters
+2026-04-10 16:17:49,860 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 6061
+2026-04-10 16:17:49,861 - model_box.NAS.core.population - DEBUG - Added individual 8/15 (attempt 19, failed: 11)
+2026-04-10 16:17:49,865 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:17:49,866 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:17:50,471 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 114,032,296 > M: 20,000,000
+2026-04-10 16:17:50,473 - model_box.NAS.core.population - INFO - Population generation: 8/15 created (attempts: 20, failed: 12)
+2026-04-10 16:17:50,476 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:17:50,476 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:17:50,515 - model_box.NAS.core.population - DEBUG - Model size: 108224 parameters
+2026-04-10 16:17:50,516 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 108224
+2026-04-10 16:17:50,516 - model_box.NAS.core.population - DEBUG - Added individual 9/15 (attempt 21, failed: 12)
+2026-04-10 16:17:50,520 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:17:50,521 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:17:50,541 - model_box.NAS.core.population - DEBUG - Model size: 2742 parameters
+2026-04-10 16:17:50,542 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 2742
+2026-04-10 16:17:50,542 - model_box.NAS.core.population - DEBUG - Added individual 10/15 (attempt 22, failed: 12)
+2026-04-10 16:17:50,546 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:17:50,546 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:17:50,573 - model_box.NAS.core.population - DEBUG - Model size: 61990 parameters
+2026-04-10 16:17:50,573 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 61990
+2026-04-10 16:17:50,573 - model_box.NAS.core.population - DEBUG - Added individual 11/15 (attempt 23, failed: 12)
+2026-04-10 16:17:50,578 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:17:50,578 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:18:38,089 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 7,733,555,144 > M: 20,000,000
+2026-04-10 16:18:38,966 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:18:38,966 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:18:39,018 - model_box.NAS.core.population - DEBUG - Model size: 478960 parameters
+2026-04-10 16:18:39,018 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 478960
+2026-04-10 16:18:39,019 - model_box.NAS.core.population - DEBUG - Added individual 12/15 (attempt 25, failed: 13)
+2026-04-10 16:18:39,021 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:18:39,022 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:18:39,139 - model_box.NAS.core.population - DEBUG - Model size: 6653560 parameters
+2026-04-10 16:18:39,139 - model_box.NAS.core.population - WARNING - Model too large: 6653560 parameters (max: 5000000)
+2026-04-10 16:18:39,143 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 8 layers
+2026-04-10 16:18:39,143 - model_box.NAS.core.population - DEBUG - Building model from individual with 8 layers
+2026-04-10 16:18:39,310 - model_box.NAS.core.population - WARNING - Assertion failed during individual check: Exceeded parameter limit. P: 32,209,899 > M: 20,000,000
+2026-04-10 16:18:39,314 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 6 layers
+2026-04-10 16:18:39,314 - model_box.NAS.core.population - DEBUG - Building model from individual with 6 layers
+2026-04-10 16:18:39,335 - model_box.NAS.core.population - DEBUG - Model size: 6382 parameters
+2026-04-10 16:18:39,335 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 6382
+2026-04-10 16:18:39,336 - model_box.NAS.core.population - DEBUG - Added individual 13/15 (attempt 28, failed: 15)
+2026-04-10 16:18:39,341 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:18:39,341 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:18:39,373 - model_box.NAS.core.population - DEBUG - Model size: 9910 parameters
+2026-04-10 16:18:39,373 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 9910
+2026-04-10 16:18:39,373 - model_box.NAS.core.population - DEBUG - Added individual 14/15 (attempt 29, failed: 15)
+2026-04-10 16:18:39,378 - model_box.NAS.core.population - DEBUG - Successfully created random individual with 10 layers
+2026-04-10 16:18:39,378 - model_box.NAS.core.population - DEBUG - Building model from individual with 10 layers
+2026-04-10 16:18:39,413 - model_box.NAS.core.population - DEBUG - Model size: 225901 parameters
+2026-04-10 16:18:39,413 - model_box.NAS.core.population - DEBUG - Individual passed all validation checks, model size: 225901
+2026-04-10 16:18:39,413 - model_box.NAS.core.population - DEBUG - Added individual 15/15 (attempt 30, failed: 15)
+2026-04-10 16:18:39,413 - model_box.NAS.core.population - INFO - Population generation: 15/15 created (attempts: 30, failed: 15)
+2026-04-10 16:18:39,414 - model_box.NAS.core.population - INFO - Initial population created with 15 individuals, removing duplicates...
+2026-04-10 16:18:39,414 - model_box.NAS.core.population - INFO - Population generation completed. Created 15/15 individuals in 55.2 seconds (attempts: 30, success rate: 50.0%)
+2026-04-10 16:18:39,417 - model_box.NAS.core.population - DEBUG - Updated population dataframe
+2026-04-10 16:18:39,417 - model_box.NAS.core.population - ERROR - Error saving population to ./models_traced/src/population_0.pkl: [Errno 2] No such file or directory: './models_traced/src/population_0.pkl'
+2026-04-10 16:18:39,418 - model_box.NAS.core.population - INFO - DataFrame saved to /home/s3167445/msc_thesis_ivar/project/Results/src/df_population_0.pkl
+2026-04-10 16:18:39,418 - model_box.NAS.core.population - INFO - Successfully checkpointed population at generation 0
