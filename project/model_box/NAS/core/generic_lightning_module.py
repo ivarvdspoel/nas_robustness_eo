@@ -32,6 +32,10 @@ class GenericLightningNetwork(pl.LightningModule):
             self.mcc = torchmetrics.classification.MulticlassMatthewsCorrCoef(num_classes=num_classes)
             self.conf_matrix = torchmetrics.classification.MulticlassConfusionMatrix(num_classes=num_classes)
             self.conf_matrix_pred = torchmetrics.classification.MulticlassConfusionMatrix(num_classes=num_classes)
+            self.clean_preds = []
+            self.perturbed_preds = []
+            self.targets = []
+            self.sample_ious = []
         else:
             self.loss_fn = nn.CrossEntropyLoss()
             self.accuracy = torchmetrics.classification.BinaryAccuracy()
@@ -185,6 +189,11 @@ class GenericLightningSegmentationNetwork(pl.LightningModule):
         self.loss_fn = FocalLoss()
         self.mse = MeanSquaredError()
         self.iou = calculate_iou
+        
+        self.clean_preds = []
+        self.perturbed_preds = []
+        self.targets = []
+        self.sample_ious = []
 
     def forward(self, x):
         return self.model(x)

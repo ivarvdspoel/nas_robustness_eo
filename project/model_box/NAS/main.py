@@ -11,8 +11,8 @@ from dataset_box.data_loader import SegmentationDataModule
 
 
 root_dir = '/local/s3167445/data'
-dm = SegmentationDataModule(root_dir, batch_size=8, num_workers=1, transform=None, val_split=0.3)
-
+dm = SegmentationDataModule(root_dir, batch_size=8, num_workers=1, transform=None, val_split=0.3, )
+dm.setup(stage="test")
 
 import argparse, os, sys
 cwd = os.getcwd()

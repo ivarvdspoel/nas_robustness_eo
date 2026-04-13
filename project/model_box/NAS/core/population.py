@@ -17,6 +17,12 @@ from ..opt.evo import single_point_crossover, gene_mutation
 from .generic_lightning_module import GenericLightningSegmentationNetwork, GenericLightningNetwork
 
 from evaluation_box.evaluation_functions import compute_miou_, compute_prediction_consistency_, compute_stats_and_outliers, compute_miou_per_sample, compute_std_dev
+from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
+from pymoo.operators.survival.rank_and_crowding.metrics import get_crowding_function
+from pymoo.operators.survival.rank_and_crowding import RankAndCrowding
+from pymoo.core.population import Population as PymooPopulation
+from pymoo.core.individual import Individual as PymooIndividual
+from pymoo.core.problem import Problem
 
 import logging 
 
@@ -47,6 +53,12 @@ def update_config_path(config_path, model_path):
     with open(config_path, 'w') as f:
         json.dump(config, f)
 
+class DummyProblem(Problem):
+    def __init__(self, n_obj):
+        super().__init__(n_var=0, n_obj=n_obj, n_ieq_constr=0, n_eq_constr=0)
+
+    def _evaluate(self, X, out, *args, **kwargs):
+        pass
 
 class Population:
     def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None):
@@ -526,38 +538,83 @@ class Population:
         return population
 
 
-    def elite_models(self, k_best=1):
-        """
-        Retrieve the top k_best elite models from the current population based on fitness.
+    # def elite_models(self, k_best=1):
+    #     """
+    #     Retrieve the top k_best elite models from the current population based on fitness.
 
-        The population is sorted in descending order based on the fitness attribute of each individual.
-        This function then returns deep copies of the top k_best individuals to ensure that the
-        original models remain immutable during further operations.
+    #     The population is sorted in descending order based on the fitness attribute of each individual.
+    #     This function then returns deep copies of the top k_best individuals to ensure that the
+    #     original models remain immutable during further operations.
 
-        Parameters:
-            k_best (int): The number of top-performing individuals to retrieve. Defaults to 1.
+    #     Parameters:
+    #         k_best (int): The number of top-performing individuals to retrieve. Defaults to 1.
 
-        Returns:
-            list: A list containing deep copies of the elite individuals.
-        """
-            # Filter out individuals with invalid fitness values
-        valid_individuals = [ind for ind in self.population if hasattr(ind, 'fitness') 
-                            and ind.fitness is not None 
-                            and not np.isnan(ind.fitness)]
+    #     Returns:
+    #         list: A list containing deep copies of the elite individuals.
+    #     """
+    #         # Filter out individuals with invalid fitness values
+    #     valid_individuals = [ind for ind in self.population if hasattr(ind, 'fitness') 
+    #                         and ind.fitness is not None 
+    #                         and not np.isnan(ind.fitness)]
         
-        if not valid_individuals:
-            self.logger.warning("No valid individuals with fitness values found!")
-            return []
-        sorted_pop = self._sort_population()
-        # Ensure we don't request more models than are available
-        k_best = min(k_best, len(sorted_pop))
-        # Create deep copies of the top models
-        topModels = [deepcopy(sorted_pop[i]) for i in range(k_best)]
-        # Log the fitness of selected models for debugging
-        for i, model in enumerate(topModels):
-            self.logger.info(f"Selected elite model for next generation. Idx {i} with fitness: {model.fitness}")
-        return topModels
+    #     if not valid_individuals:
+    #         self.logger.warning("No valid individuals with fitness values found!")
+    #         return []
+    #     sorted_pop = self._sort_population()
+    #     # Ensure we don't request more models than are available
+    #     k_best = min(k_best, len(sorted_pop))
+    #     # Create deep copies of the top models
+    #     topModels = [deepcopy(sorted_pop[i]) for i in range(k_best)]
+    #     # Log the fitness of selected models for debugging
+    #     for i, model in enumerate(topModels):
+    #         self.logger.info(f"Selected elite model for next generation. Idx {i} with fitness: {model.fitness}")
+    #     return topModels
 
+    def elite_models(self, k_best=1):
+        valid = [
+        ind for ind in self.population
+        if getattr(ind, "objectives", None) is not None
+        and np.all(np.isfinite(ind.objectives))
+        ]
+
+        if not valid:
+            return []
+
+        inds = [
+            PymooIndividual(
+                F=np.asarray(ind.objectives, dtype=float),
+                CV=0.0,
+                idx=i
+            )
+            for i, ind in enumerate(valid)
+        ]
+
+        pymoo_pop = PymooPopulation.create(*inds)
+
+        problem = DummyProblem(n_obj=len(valid[0].objectives))
+        survival = RankAndCrowding(crowding_func="cd")
+
+        # run survival on the full population so rank/crowding get assigned
+        _ = survival.do(
+            problem=problem,
+            pop=pymoo_pop,
+            n_survive=len(pymoo_pop)
+        )
+
+        annotated = []
+        for p in pymoo_pop:
+            idx = p.get("idx")
+            ind = valid[idx]
+            rank = p.get("rank")
+            crowding = p.get("crowding")
+
+            annotated.append((ind, rank, crowding))
+
+        # NSGA-II ordering: rank ascending, crowding descending
+        annotated.sort(key=lambda x: (x[1], -x[2]))
+
+
+        return [x[0] for x in annotated]
 
     def evolve(self, mating_pool_cutoff=0.5, mutation_probability=0.85, k_best=1, n_random=3):
         """
@@ -578,14 +635,21 @@ class Population:
         """
         new_population = []
         self.generation += 1
-        self.topModels = self.elite_models(k_best=k_best)
 
+        sorted_pop = self.elite_models()
+        assert len(sorted_pop) > 0, "No valid individuals available."
 
-        # 2. Create the mating pool based on the cutoff from the sorted population
-        sorted_pop = sorted(self, key=lambda individual: individual.fitness, reverse=True)
-        mating_pool = sorted_pop[:int(np.floor(mating_pool_cutoff * self.n_individuals))].copy()
+        self.topModels = sorted_pop[:k_best]
+        print(self.topModels)
+
+        mating_pool_size = max(1, int(np.floor(mating_pool_cutoff * self.n_individuals)))
+        mating_pool = sorted_pop[:mating_pool_size].copy()
+
         assert len(mating_pool) > 0, "Mating pool is empty."
-        
+
+        # keep elites
+        new_population.extend(self.topModels)
+    
         # Generate offspring until reaching the desired population size
         while len(new_population) < self.n_individuals - n_random - k_best:
             try:
@@ -891,17 +955,16 @@ class Population:
         
         
         results = self.evaluate_individual(LM, task=task)
+        
+        print(results)
+        
         self.results = results
 
         individual.miou = results["miou"]
+        individual.metric = results["miou"]
         individual.prediction_consistency = results["prediction_consistency"]
         individual.std_dev = results["std_dev"]
-
-        individual.objectives = [
-            -individual.miou,
-            -individual.prediction_consistency,
-            individual.std_dev,
-        ]
+        individual.set_objectives()
 
         # results = trainer.test(LM, self.dm)
         # self.results = results
@@ -935,7 +998,7 @@ class Population:
         #     individual.fitness = None
         #     individual.failed = True  # Optional: flag to identify failed evaluations
 
-        # # ===== Ensure DataFrame is aligned with population before updating =====
+        # ===== Ensure DataFrame is aligned with population before updating =====
         # if self.df is None or idx not in self.df.index:
         #     print(f"[INFO] DataFrame missing or index {idx} not found. Regenerating DataFrame.")
         #     self._update_df()
@@ -947,11 +1010,11 @@ class Population:
         
         # self.save_dataframe()
         # print('updated the df')
-        # self.save_population()
-        # print('saved population')
-        # self._checkpoint()
-        # print('checkpointed')
-        # ###### new code ends here
+        #self.save_population()
+        #print('saved population')
+        self._checkpoint()
+        print('checkpointed')
+        ###### new code ends here
 
     def evaluate_individual(self, LM, task):
         perturbation = "brightness"
@@ -964,28 +1027,31 @@ class Population:
         targets = []
         miou_per_sample_all = []
 
+        # Make sure test dataset exists
+        self.dm.setup(stage='test')
         test_loader = self.dm.test_dataloader()
 
         with torch.no_grad():
-            for batch in test_loader:
+            for batch_idx, batch in enumerate(test_loader):
                 x, y = batch
                 x = x.to(self.device)
                 y = y.to(self.device)
 
-                # clean
-                logits = LM(x)
-                preds = torch.argmax(logits, dim=1)
+                logits = LM(x)                  # [B, 4, H, W]
+                preds = torch.argmax(logits, dim=1)   # [B, H, W]
 
-                # perturbed
                 x_perturbed = self.perturb_batch(x, perturbation=perturbation)
-                logits_pert = LM(x_perturbed)
-                preds_pert = torch.argmax(logits_pert, dim=1)
+                logits_pert = LM(x_perturbed)         # [B, 4, H, W]
+                preds_pert = torch.argmax(logits_pert, dim=1)   # [B, H, W]
+
+                # Convert one-hot target [B, 4, H, W] -> class index target [B, H, W]
+                y_indices = torch.argmax(y, dim=1)
 
                 clean_preds.append(preds.detach().cpu())
                 perturbed_preds.append(preds_pert.detach().cpu())
-                targets.append(y.detach().cpu())
+                targets.append(y_indices.detach().cpu())
 
-                miou_per_sample = compute_miou_per_sample(preds_pert, y)
+                miou_per_sample = compute_miou_per_sample(preds_pert, y_indices)
                 miou_per_sample_all.append(miou_per_sample.detach().cpu())
 
         clean_preds = torch.cat(clean_preds, dim=0)
@@ -1030,11 +1096,11 @@ class Population:
             None
         """
         for idx in range(len(self)):
-            if 'Fitness' in self.df.columns and not pd.isna(self.df.loc[idx, 'Fitness']) and self.df.loc[idx, 'Fitness'] != 0:
-                print(f"Skipping individual {idx}/{len(self)} as it has already been trained")
-                continue
+            # if 'Fitness' in self.df.columns and not pd.isna(self.df.loc[idx, 'Fitness']) and self.df.loc[idx, 'Fitness'] != 0:
+            #     print(f"Skipping individual {idx}/{len(self)} as it has already been trained")
+            #     continue
 
-            print(f"Training individual {idx}/{len(self)}")
+            # print(f"Training individual {idx}/{len(self)}")
             self.train_individual(idx=idx, task=task, lr=lr, epochs=epochs, batch_size=batch_size)
             #clear_output(wait=True)
 

@@ -30,7 +30,7 @@ def gene_mutation(children, mutation_probability):
                 elif gene[0]=='H': # Head gene
                     break
                 else:
-                    raise ValueError(f"Unrecognized gene type: {gene[0]}")
+                    raise ValueError(   f"Unrecognized gene type: {gene[0]}")
         child._reparse_layers()
         new_children.append(child)
     return new_children
