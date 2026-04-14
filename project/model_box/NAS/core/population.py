@@ -640,6 +640,7 @@ class Population:
         assert len(sorted_pop) > 0, "No valid individuals available."
 
         self.topModels = sorted_pop[:k_best]
+        print("EVOLVING!")
         print(self.topModels)
 
         mating_pool_size = max(1, int(np.floor(mating_pool_cutoff * self.n_individuals)))
@@ -960,61 +961,14 @@ class Population:
         
         self.results = results
 
-        individual.miou = results["miou"]
-        individual.metric = results["miou"]
+        individual.miou = results["miou_clean"]
+        individual.metric = results["miou_clean"]
         individual.prediction_consistency = results["prediction_consistency"]
         individual.std_dev = results["std_dev"]
         individual.set_objectives()
 
-        # results = trainer.test(LM, self.dm)
-        # self.results = results
-        
-        # # ===== Save model =====
-        # self.idx = idx  # required for save_model() paths
-        # self.LM = LM
-        # self.save_model(LM)
-
-        # # ===== Test model ===== TODO: Implement a separate test method
-        # self.logger.info(f"[Generation {self.generation} | Individual {idx}] Training completed. Evaluating model...")
-        # try:
-        #     #  ===== Extract metrics
-        #     accuracy = np.float32(results["accuracy"])
-        #     latency = np.float32(results["latency"])
-        
-        #     # ===== Update individual metrics and fitness
-        #     individual.iou = accuracy
-        #     individual.fps = latency
-
-
-
-        
-        # except Exception as e:
-        #     self.logger.error(f"[Generation {self.generation} | Individual {idx}] API call failed: {e}")
-            
-        #     # Mark as failed
-        #     individual.iou = None
-        #     individual.metric = None
-        #     individual.fps = None
-        #     individual.fitness = None
-        #     individual.failed = True  # Optional: flag to identify failed evaluations
-
-        # ===== Ensure DataFrame is aligned with population before updating =====
-        # if self.df is None or idx not in self.df.index:
-        #     print(f"[INFO] DataFrame missing or index {idx} not found. Regenerating DataFrame.")
-        #     self._update_df()
-
-        # # ===== Update DataFrame regardless of success or failure =====
-        # self.df.loc[idx, 'Fitness'] = individual.fitness
-        # self.df.loc[idx, 'Metric'] = individual.iou
-        # self.df.loc[idx, 'FPS'] = individual.fps
-        
-        # self.save_dataframe()
-        # print('updated the df')
-        #self.save_population()
-        #print('saved population')
         self._checkpoint()
         print('checkpointed')
-        ###### new code ends here
 
     def evaluate_individual(self, LM, task):
         perturbation = "brightness"
@@ -1059,12 +1013,14 @@ class Population:
         targets = torch.cat(targets, dim=0)
         miou_per_sample_all = torch.cat(miou_per_sample_all, dim=0)
 
-        miou = compute_miou_(perturbed_preds, targets)
+        miou_clean = compute_miou_(clean_preds, targets)
+        miou_perturbed = compute_miou_(perturbed_preds, targets)
         prediction_consistency = compute_prediction_consistency_(clean_preds, perturbed_preds)
         std_dev = compute_std_dev(miou_per_sample_all)
 
         return {
-            "miou": float(miou),
+            "miou_clean": float(miou_clean),
+            "miou_perturbed": float(miou_perturbed),
             "prediction_consistency": float(prediction_consistency),
             "std_dev": float(std_dev),
         }
