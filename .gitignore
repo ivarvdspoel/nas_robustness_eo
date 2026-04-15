@@ -1,0 +1,14 @@
+*.bin
+*.pt
+*.pth
+*__pycache__*
+*.vscode
+*lightning_logs*
+pynas*
+legacy*
+*.pkl
+*.log
+*/Results/*
+*/logs*
+*.csv
+*.jsonl

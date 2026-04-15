@@ -1,6 +1,6 @@
 from . import architecture_builder as builder
 from copy import deepcopy
-
+import numpy as np
 
 class Individual:
     def __init__(self, max_layers, min_layers=3):
@@ -13,6 +13,7 @@ class Individual:
         )
         self.parsed_layers = builder.parse_architecture_code(self.architecture)
         self.reset()
+        self.id = np.uint64(np.random.randint(0, 2**64, dtype=np.uint64))
 
     def __str__(self):
         return f"Individual: {self.architecture} - objective values: {self.objectives}"

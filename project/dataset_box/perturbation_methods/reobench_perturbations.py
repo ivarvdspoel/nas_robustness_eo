@@ -39,7 +39,7 @@ def gaussian_blur_batch_tensor(x, severity=1):
     return blurred
 
 def motion_blur_batch_tensor(x, severity=1):
-    kernel_sizes = [3, 5, 7, 9, 21]
+    kernel_sizes = [3, 5, 7, 9, 11]
     k = kernel_sizes[severity - 1]
 
     B, C, H, W = x.shape

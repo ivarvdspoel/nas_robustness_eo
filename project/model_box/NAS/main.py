@@ -11,7 +11,7 @@ from dataset_box.data_loader import SegmentationDataModule
 
 
 root_dir = '/local/s3167445/data'
-dm = SegmentationDataModule(root_dir, batch_size=8, num_workers=1, transform=None, val_split=0.3, )
+dm = SegmentationDataModule(root_dir, batch_size=8, num_workers=1, transform=None, val_split=0.3)
 dm.setup(stage="test")
 
 import argparse, os, sys
@@ -36,7 +36,7 @@ parser.add_argument('--batch_size', type=int, default=None, help='Batch size for
 parser.add_argument('--n_random', type=int, default=None, help='Number of random individuals per generation.')
 parser.add_argument('--k_best', type=int, default=None, help='Number of best individuals to keep.')
 parser.add_argument('--task', type=str, default=None, help='Task type.')
-
+parser.add_argument('--perturbation_type', type=str, default=None, help='Perturbation method')
 
 
 def main(args):
@@ -69,6 +69,8 @@ def main(args):
             config.set('GA', 'k_best', str(args.k_best))
         if args.task is not None:
             config.set('GA', 'task', args.task)
+        if args.perturbation_type is not None:
+            config.set('Perturbation', 'type', args.perturbation_type)
         
         # Read updated configuration
         seed = config.getint(section='Computation', option='seed')
@@ -89,15 +91,17 @@ def main(args):
         k_best = int(config['GA']['k_best'])
         task = str(config['GA']['task'])
         max_params = int(config['GA']['max_parameters'])
+        perturbation_type = config.get('Perturbation', 'type', fallback='clean')
         
-
+        perturbation_type = "brightness_contrast"
         
         # 0. Define population
         pop = Population(n_individuals=n_individuals, 
                         max_layers=max_layers, 
                         dm=dm,
                         save_directory=save_dir,
-                        max_parameters=max_params)
+                        max_parameters=max_params,
+                        perturbation=perturbation_type)
         # TODO: if you want to use group norm in the decoder, set the following to True
         pop._use_group_norm = False
         
@@ -107,7 +111,7 @@ def main(args):
             with open(config_path, 'w') as configfile:
                 config.write(configfile)
         
-
+        
         
         if args.gen is not None:
             pop.load_generation(args.gen) # load a generation from the saved models

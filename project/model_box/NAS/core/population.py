@@ -41,6 +41,20 @@ config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.j
 #mp.set_start_method('fork', force=True)
 import torch.multiprocessing as mp
 
+
+
+from dataset_box.perturbation_methods.reobench_perturbations import *
+
+reobench_perturbations = {
+    "gaussian_noise": add_gaussian_noise_batch_tensor,
+    "salt_pepper": add_salt_pepper_batch_tensor,
+    "gaussian_blur": gaussian_blur_batch_tensor,
+    "motion_blur": motion_blur_batch_tensor,
+    "brightness_contrast": adjust_brightness_contrast_batch_tensor,
+    "haze": add_haze_batch_tensor,
+}
+
+
 try:
     mp.set_start_method('spawn', force=True)
 except RuntimeError:
@@ -61,7 +75,7 @@ class DummyProblem(Problem):
         pass
 
 class Population:
-    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None):
+    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, perturbation=None):
         """
         Initialize a new population for the evolutionary neural architecture search.
         
@@ -106,6 +120,8 @@ class Population:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = self.setup_logger()
         
+        self.perturbation = perturbation
+
         self.logger.info(f"Initialized population with {n_individuals} individuals, "
                          f"max_layers={max_layers}, max_parameters={max_parameters}, "
                          f"device={self.device}")
@@ -614,7 +630,7 @@ class Population:
         annotated.sort(key=lambda x: (x[1], -x[2]))
 
 
-        return [x[0] for x in annotated]
+        return [deepcopy(x[0]) for x in annotated]
 
     def evolve(self, mating_pool_cutoff=0.5, mutation_probability=0.85, k_best=1, n_random=3):
         """
@@ -957,7 +973,9 @@ class Population:
         
         results = self.evaluate_individual(LM, task=task)
         
-        print(results)
+        self.log_results(individual, results)
+
+        print(individual.id, results)
         
         self.results = results
 
@@ -970,8 +988,19 @@ class Population:
         self._checkpoint()
         print('checkpointed')
 
+
+    def log_results(self, individual, results):
+        log_entry = {
+            "generation": self.generation,
+            "id": int(individual.id),
+            "results": results
+        }
+
+        with open("evolution_log.jsonl", "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+
+
     def evaluate_individual(self, LM, task):
-        perturbation = "brightness"
 
         LM.eval()
         LM.to(self.device)
@@ -994,7 +1023,7 @@ class Population:
                 logits = LM(x)                  # [B, 4, H, W]
                 preds = torch.argmax(logits, dim=1)   # [B, H, W]
 
-                x_perturbed = self.perturb_batch(x, perturbation=perturbation)
+                x_perturbed = self.perturb_batch(x, perturbation=self.perturbation)
                 logits_pert = LM(x_perturbed)         # [B, 4, H, W]
                 preds_pert = torch.argmax(logits_pert, dim=1)   # [B, H, W]
 
@@ -1025,19 +1054,15 @@ class Population:
             "std_dev": float(std_dev),
         }
 
-
-    def perturb_batch(self, x, perturbation="brightness", alpha=1.1):
-        if perturbation == "brightness":
-            x_perturbed = x * alpha
-
-            # clamp to valid range (important for images)
-            x_perturbed = torch.clamp(x_perturbed, 0.0, 1.0)
-
-            return x_perturbed
-
+    def perturb_batch(self, x, perturbation="clean"):
+        if perturbation == "clean" or perturbation == None:
+            return x
         else:
-            raise ValueError(f"Unknown perturbation: {perturbation}")
-    
+            perturb_fn = reobench_perturbations[perturbation]
+            severity = 5 # Worst severity in REOBench
+            x = perturb_fn(x, severity=severity)
+            return x
+
     def train_generation(self, task='classification', lr=0.001, epochs=4, batch_size=32):
         """
         Train all individuals in the current generation that have not been trained yet.
