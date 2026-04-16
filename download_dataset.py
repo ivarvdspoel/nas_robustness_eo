@@ -2,7 +2,7 @@ from huggingface_hub import snapshot_download
 import os
 
 DATASET_REPO = "ESA-PhiLab-Edge/OEOBench-Burnt_Area_Dataset"
-OUTPUT_DIR = "/local/s3167445/datasets/OEOBench-Burnt_Area_Dataset"
+OUTPUT_DIR = "/shared/home/ivanderspoel/dataset/OEOBench-Burnt_Area_Dataset"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

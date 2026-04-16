@@ -166,7 +166,7 @@ class SegmentationDataModule(LightningDataModule):
     def setup(self, stage='fit'):
         self.full_dataset = SegmentationDataset(
             root_dir=self.root_dir,
-            split='TrainVal',
+            split='trainval',
             transform=self.transform,
         )
 
@@ -187,7 +187,7 @@ class SegmentationDataModule(LightningDataModule):
         if stage == 'test':
             self.test_dataset = SegmentationDataset(
                 root_dir=self.root_dir,
-                split='Test',
+                split='test',
                 transform=self.transform,
             )
 
