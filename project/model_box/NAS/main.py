@@ -5,7 +5,7 @@ pd.set_option('display.max_colwidth', None)
 
 import torch
 import pytorch_lightning as pl
-
+import numpy as np
 from model_box.NAS.core.population import Population
 from dataset_box.data_loader import SegmentationDataModule
 
@@ -94,14 +94,15 @@ def main(args):
         perturbation_type = config.get('Perturbation', 'type', fallback='clean')
         
         perturbation_type = "brightness_contrast"
-        
+        run_id=int(np.uint64(np.random.randint(0, 2**64, dtype=np.uint64)))
         # 0. Define population
         pop = Population(n_individuals=n_individuals, 
                         max_layers=max_layers, 
                         dm=dm,
                         save_directory=save_dir,
                         max_parameters=max_params,
-                        perturbation=perturbation_type)
+                        perturbation=perturbation_type,
+                        run_id=run_id)
         # TODO: if you want to use group norm in the decoder, set the following to True
         pop._use_group_norm = False
         

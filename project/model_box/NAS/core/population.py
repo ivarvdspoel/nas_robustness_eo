@@ -75,7 +75,7 @@ class DummyProblem(Problem):
         pass
 
 class Population:
-    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, perturbation=None):
+    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, perturbation=None, run_id=0):
         """
         Initialize a new population for the evolutionary neural architecture search.
         
@@ -109,7 +109,7 @@ class Population:
         self.generation = 0
         self.population = []  # Initialize empty population
         self.df = None  # Will hold population stats as DataFrame
-        
+        self.run_id = run_id
         # File storage
         self.save_directory = save_directory or "./models_traced"
         # Create directories if they don't exist
@@ -996,7 +996,7 @@ class Population:
             "results": results
         }
 
-        with open("evolution_log.jsonl", "a") as f:
+        with open(f"{self.run_id}_evolution_log.jsonl", "a") as f:
             f.write(json.dumps(log_entry) + "\n")
 
 
