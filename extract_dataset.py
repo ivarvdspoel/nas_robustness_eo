@@ -4,8 +4,9 @@ import zarr
 from tqdm import tqdm
 
 
-ZARR_ROOT = Path("/shared/home/ivanderspoel/dataset/OEOBench-Burnt_Area_Dataset/burned.zarr.zip")
-OUT_ROOT = Path("/shared/home/ivanderspoel/dataset/OEOBench-Burnt_Area_Dataset/data")  # where the npy dataset will go
+#ZARR_ROOT = Path("/shared/home/ivanderspoel/dataset/OEOBench-Burnt_Area_Dataset/burned.zarr.zip")
+ZARR_ROOT = Path("/tmp/ivar_data/burned.zarr.zip")
+OUT_ROOT = Path("/tmp/ivar_data/data")  # where the npy dataset will go
 
 
 # Open Zarr root

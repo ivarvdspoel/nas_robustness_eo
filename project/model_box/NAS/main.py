@@ -11,8 +11,8 @@ from dataset_box.data_loader import SegmentationDataModule
 import argparse, os, sys
 cwd = os.getcwd()
 
-bs = 32
-nw = 2
+bs = 8
+nw = 3
 root_dir = "/tmp/ivanderspoel/burn_dataset"
 
 # Argument parser
