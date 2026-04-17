@@ -42,6 +42,9 @@ test_loader = DataLoader(dm.test_dataset, batch_size=batch_size, num_workers=num
 # =========================
 models = {}
 
+# ckpt model
+
+
 # PyNAS
 pynas = torch.jit.load('model_box/saved_models/PNAS_NVIDIA_jetson_AGX_orin.pt', map_location=device)
 pynas.to(device)

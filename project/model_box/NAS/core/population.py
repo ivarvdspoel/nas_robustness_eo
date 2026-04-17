@@ -987,6 +987,7 @@ class Population:
 
         self._checkpoint()
         print('checkpointed')
+        self.save_model(LM, idx)
 
 
     def log_results(self, individual, results):
@@ -1017,8 +1018,8 @@ class Population:
         with torch.no_grad():
             for batch_idx, batch in enumerate(test_loader):
                 x, y = batch
-                x = x.to(self.device)
-                y = y.to(self.device)
+                x = x.to(self.device)#, non_blocking=True)
+                y = y.to(self.device)#, non_blocking=True)
 
                 logits = LM(x)                  # [B, 4, H, W]
                 preds = torch.argmax(logits, dim=1)   # [B, H, W]
@@ -1059,7 +1060,10 @@ class Population:
             return x
         else:
             perturb_fn = reobench_perturbations[perturbation]
+            
             severity = 5 # Worst severity in REOBench
+            if perturbation == "brightness_contrast":
+                severity = 2
             x = perturb_fn(x, severity=severity)
             return x
 
@@ -1085,102 +1089,33 @@ class Population:
             self.train_individual(idx=idx, task=task, lr=lr, epochs=epochs, batch_size=batch_size)
             #clear_output(wait=True)
 
-    def save_model(self, LM,
-                   save_torchscript=True, 
-                   ts_save_path=None,
-                   save_standard=True, 
-                   std_save_path=None,
-                   save_myriad=False,  # <-- add this
-                  openvino_save_path=None):
-        
+    def save_model(self, LM, idx):
+        individual = self.population[idx]
         gen = self.generation
-        # Ensure results directory exists
-        os.makedirs(f"./models_traced/generation_{gen}", exist_ok=True)
-        
-        
-        if ts_save_path is None:
-            ts_save_path = f"models_traced/generation_{gen}/model_and_architecture_{self.idx}.pt"
-            self.ts_save_path = ts_save_path
-        if std_save_path is None:
-            std_save_path = f"models_traced/generation_{gen}/model_{self.idx}.pth"
-            self.std_save_path = std_save_path
-        if openvino_save_path is None:
-            openvino_save_path = f"models_traced/generation_{gen}/openvino_model_{self.idx}"
+        ind_id = int(individual.id)
+        perturb = self.perturbation if self.perturbation not in [None, ""] else "clean"
 
+        save_dir = os.path.join(
+            self.save_directory,
+            f"generation_{gen}_{perturb}"
+        )
+        os.makedirs(save_dir, exist_ok=True)
 
+        model_path = os.path.join(save_dir, f"gen_{gen}_id_{ind_id}.pt")
 
-        # Save the results to a text file.
-        with open(f"./models_traced/generation_{gen}/results_model_{self.idx}.txt", "w") as f:
-            f.write("Test Results:\n")
-            for key, value in self.results[0].items():
-                f.write(f"{key}: {value}\n")
-        
-        # Prepare dummy input from dm.input_shape
         input_shape = self.dm.input_shape
         if len(input_shape) == 3:
             input_shape = (1,) + input_shape
+
         device = next(LM.parameters()).device
         example_input = torch.randn(*input_shape).to(device)
-        
-        LM = LM.eval()  # set the model to evaluation mode
-        
-        if save_torchscript:
-            traced_model = torch.jit.trace(LM.model, example_input)
-            traced_model.save(ts_save_path) # type: ignore
-            print(f"Scripted (TorchScript) model saved at {ts_save_path}")
-        
-        if save_standard:
-            # Retrieve architecture code from the individual.
-            arch_code = self.population[self.idx].architecture
-            save_dict = {"state_dict": LM.model.state_dict()}
-            if arch_code is not None:
-                save_dict["architecture_code"] = arch_code
-            torch.save(save_dict, std_save_path)
-            print(f"Standard model saved at {std_save_path}")
 
-        
-        if save_myriad:
-            print("[INFO] Entering Myriad export subprocess")
-            # Save model as temporary ONNX
-            temp_onnx_path = os.path.join("/tmp", f"temp_model_{self.idx}.onnx")
-            dummy_input = torch.randn(*input_shape).to("cpu")
-            torch.onnx.export(LM.model.cpu(), dummy_input, temp_onnx_path, opset_version=11)
+        LM = LM.eval()
+        traced_model = torch.jit.trace(LM.model, example_input)
+        traced_model.save(model_path)
 
-            # Output OpenVINO model directory
-            output_dir = os.path.abspath(f"{openvino_save_path}")
-            os.makedirs(output_dir, exist_ok=True)
-
-            try:
-                result = subprocess.run(
-                    [
-                        "mo",  # Model Optimizer CLI
-                        "--input_model", temp_onnx_path,
-                        "--output_dir", output_dir
-                        #"--data_type", "FP16"
-                    ],
-                    env={**os.environ, "OPENVINO_CONF_IGNORE": "YES"},
-                    check=True,
-                    capture_output=True,
-                    text=True
-                )
-                print("[Myriad X] OpenVINO model converted successfully.")
-                print(result.stdout)
-
-                # After successful export, update the config file to point to the correct OpenVINO XML path
-                xml_path = os.path.join(output_dir, f"temp_model_{self.idx}.xml")
-                from pynas.core.population import update_config_path  # Ensure absolute import if needed
-                update_config_path(config_path, xml_path)
-
-            except subprocess.CalledProcessError as e:
-                print("[ERROR] Myriad export failed via subprocess:")
-                print(e.stderr)
-                self.logger.error(f"Myriad export failed: {e.stderr}")
-
-            finally:
-                if os.path.exists(temp_onnx_path):
-                    os.remove(temp_onnx_path)
-
-
+        self.logger.info(f"Saved TorchScript model to {model_path}")
+        print(f"Saved model: {model_path}")
 
 
 
