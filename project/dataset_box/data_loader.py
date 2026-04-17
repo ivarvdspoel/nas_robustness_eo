@@ -16,11 +16,10 @@ reobench_perturbations = {
 }
 
 class SegmentationDataset(Dataset):
-    def __init__(self, root_dir, split='TrainVal', transform=None, preload_to_ram=False, augment_p=0.5, perturbation_type="clean"):
+    def __init__(self, root_dir, split='trainval', transform=None, augment_p=0.5, perturbation_type="clean"):
         self.root_dir = root_dir
         self.split = split
         self.transform = transform
-        self.preload_to_ram = preload_to_ram
         self.augment_p = augment_p
         self.perturbation_type = perturbation_type
 
@@ -43,9 +42,6 @@ class SegmentationDataset(Dataset):
         self.image_paths = [os.path.join(image_dir, f) for f in image_filenames]
         self.mask_paths = [os.path.join(mask_dir, f) for f in mask_filenames]
 
-        if self.preload_to_ram:
-            self._preload_data()
-
     def _load_one_file_pair(self, img_path, mask_path):
         image = np.load(img_path)
         if image.shape[-1] == 7:
@@ -58,18 +54,6 @@ class SegmentationDataset(Dataset):
         image = torch.tensor(image, dtype=torch.float32)
         mask = torch.tensor(mask, dtype=torch.float32)
         return image, mask
-
-    def _preload_data(self):
-        images = []
-        masks = []
-
-        for img_path, mask_path in zip(self.image_paths, self.mask_paths):
-            image, mask = self._load_one_file_pair(img_path, mask_path)
-            images.append(image)
-            masks.append(mask)
-
-        self.images_ram = images
-        self.masks_ram = masks
 
     def add_item(self, x, y):
         x = self._to_tensor(x)
@@ -135,11 +119,7 @@ class SegmentationDataset(Dataset):
         n_file_samples = len(self.image_paths)
 
         if idx < n_file_samples:
-            if self.preload_to_ram:
-                image = self.images_ram[idx]
-                mask = self.masks_ram[idx]
-            else:
-                image, mask = self._load_one_file_pair(self.image_paths[idx], self.mask_paths[idx])
+            image, mask = self._load_one_file_pair(self.image_paths[idx], self.mask_paths[idx])
         else:
             image, mask = self.extra_samples[idx - n_file_samples]
 
@@ -148,29 +128,24 @@ class SegmentationDataset(Dataset):
             mask = self.transform(mask)
 
         # only augment training split, with probability p
+        chance = torch.rand(1).item()
         if self.split == 'trainval' and self.perturbation_type not in ["clean", None]:
-            if torch.rand(1).item() < self.augment_p:
+            if chance < self.augment_p:
                 image = self.perturb_image(image)
 
         return image, mask
 
-    # def __getitem__(self, idx):
-    #     n_file_samples = len(self.image_paths)
 
-    #     if idx < n_file_samples:
-    #         if self.preload_to_ram:
-    #             image = self.images_ram[idx]
-    #             mask = self.masks_ram[idx]
-    #         else:
-    #             image, mask = self._load_one_file_pair(self.image_paths[idx], self.mask_paths[idx])
-    #     else:
-    #         image, mask = self.extra_samples[idx - n_file_samples]
+    def perturb_image(self, image):
+        if self.perturbation_type in ["clean", None]:
+            return image
 
-    #     if self.transform:
-    #         image = self.transform(image)
-    #         mask = self.transform(mask)
+        perturb_fn = reobench_perturbations[self.perturbation_type]
+        severity = 2 if self.perturbation_type == "brightness_contrast" else 5
 
-    #     return image, mask
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        image = perturb_fn(image.unsqueeze(0), severity=severity).squeeze(0)
+        return image.cpu()
 
 
 class SegmentationDataModule(LightningDataModule):
@@ -181,7 +156,6 @@ class SegmentationDataModule(LightningDataModule):
         num_workers=1,
         transform=None,
         val_split=0.3,
-        preload_to_ram=False,
         perturbation_type=None,
     ):
         super().__init__()
@@ -190,7 +164,6 @@ class SegmentationDataModule(LightningDataModule):
         self.transform = transform
         self.num_workers = num_workers
         self.val_split = val_split
-        self.preload_to_ram = preload_to_ram
         self.perturbation_type = perturbation_type
 
         self.full_dataset = None
@@ -202,18 +175,6 @@ class SegmentationDataModule(LightningDataModule):
 
     def prepare_data(self):
         pass
-
-    def perturb_image(self, image):
-        if self.perturbation_type in ["clean", None]:
-            return image
-
-        perturb_fn = reobench_perturbations[self.perturbation_type]
-        severity = 2 if self.perturbation_type == "brightness_contrast" else 5
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        image = image.to(device)
-        image = perturb_fn(image.unsqueeze(0), severity=severity).squeeze(0)
-        return image.cpu()
 
     def perturb_batch(self, x, perturbation="clean"):
         if perturbation == "clean" or perturbation is None:
@@ -260,8 +221,8 @@ class SegmentationDataModule(LightningDataModule):
             root_dir=self.root_dir,
             split='trainval',
             transform=self.transform,
-            preload_to_ram=self.preload_to_ram,
             augment_p=0.5,
+            perturbation_type=self.perturbation_type
         )
 
         self.class_names = self.full_dataset.classes
@@ -283,7 +244,6 @@ class SegmentationDataModule(LightningDataModule):
                 root_dir=self.root_dir,
                 split='test',
                 transform=self.transform,
-                preload_to_ram=self.preload_to_ram,
                 augment_p=0.0,
             )
 

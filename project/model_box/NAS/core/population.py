@@ -1048,6 +1048,7 @@ class Population:
         prediction_consistency = compute_prediction_consistency_(clean_preds, perturbed_preds)
         std_dev = compute_std_dev(miou_per_sample_all)
 
+        self.dm.setup(stage='fit')
         return {
             "miou_clean": float(miou_clean),
             "miou_perturbed": float(miou_perturbed),

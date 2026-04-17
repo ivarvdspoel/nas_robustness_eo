@@ -12,7 +12,7 @@ import argparse, os, sys
 cwd = os.getcwd()
 
 bs = 32
-nw = 1
+nw = 2
 root_dir = "/tmp/ivanderspoel/burn_dataset"
 
 # Argument parser
@@ -99,15 +99,9 @@ def main(args):
             num_workers=nw,
             transform=None,
             val_split=0.3,
-            preload_to_ram=False,
             perturbation_type=perturbation_type,
         )
-        dm.setup(stage="test")
-        print(f"TrainVal (full_dataset): {len(dm.full_dataset)}")
-        print(f"Train: {len(dm.train_dataset)}")
-        print(f"Val: {len(dm.val_dataset)}")
-        print(f"Test: {len(dm.test_dataset)}")
-        #exit(1)
+
         pop = Population(
             n_individuals=n_individuals,
             max_layers=max_layers,
