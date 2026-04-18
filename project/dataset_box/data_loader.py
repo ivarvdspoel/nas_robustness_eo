@@ -183,8 +183,6 @@ class SegmentationDataModule(LightningDataModule):
             perturb_fn = reobench_perturbations[perturbation]
 
             severity = 5
-            if perturbation == "brightness_contrast":
-                severity = 2
 
             x = perturb_fn(x, severity=severity)
             return x

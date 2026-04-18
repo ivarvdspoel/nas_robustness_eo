@@ -46,7 +46,6 @@ class Individual:
 
         # other metadata
         self.model_size = None
-        self.model = None
         self.failed = False
 
     def set_objectives(self):
@@ -102,6 +101,3 @@ class Individual:
             new_individual.model = deepcopy(self.model)
 
         return new_individual
-
-    def set_trained_model(self, model):
-        self.model = model

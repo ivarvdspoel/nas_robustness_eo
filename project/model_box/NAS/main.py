@@ -86,8 +86,10 @@ def main(args):
         task = str(config['GA']['task'])
         max_params = int(config['GA']['max_parameters'])
         perturbation_type = config.get('Perturbation', 'type', fallback='clean')
-
+        
+        
         print(perturbation_type)
+        print(max_layers)
         if args.run_id is not None:
             run_id = args.run_id
         else:
@@ -101,7 +103,6 @@ def main(args):
             val_split=0.3,
             perturbation_type=perturbation_type,
         )
-
         pop = Population(
             n_individuals=n_individuals,
             max_layers=max_layers,

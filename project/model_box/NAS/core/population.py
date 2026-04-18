@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import shutil
 
-
+import gc
 
 from ..blocks.heads import MultiInputClassifier
 from .individual import Individual 
@@ -652,7 +652,10 @@ class Population:
         new_population = []
         self.generation += 1
 
-        sorted_pop = self.elite_models()
+        #sorted_pop = self.elite_models()
+        #sorted_pop = list(self.population)
+        sorted_pop = [deepcopy(ind) for ind in self.population]
+
         assert len(sorted_pop) > 0, "No valid individuals available."
 
         self.topModels = sorted_pop[:k_best]
@@ -990,6 +993,9 @@ class Population:
         self.save_model(LM, idx)
 
 
+        LM.model.cpu()
+        del LM
+        
     def log_results(self, individual, results):
         log_entry = {
             "generation": self.generation,
@@ -1021,11 +1027,13 @@ class Population:
                 x = x.to(self.device)#, non_blocking=True)
                 y = y.to(self.device)#, non_blocking=True)
 
-                logits = LM(x)                  # [B, 4, H, W]
+                with torch.no_grad():
+                    logits = LM(x)                  # [B, 4, H, W]
                 preds = torch.argmax(logits, dim=1)   # [B, H, W]
 
                 x_perturbed = self.perturb_batch(x, perturbation=self.perturbation)
-                logits_pert = LM(x_perturbed)         # [B, 4, H, W]
+                with torch.no_grad():
+                    logits_pert = LM(x_perturbed)         # [B, 4, H, W]
                 preds_pert = torch.argmax(logits_pert, dim=1)   # [B, H, W]
 
                 # Convert one-hot target [B, 4, H, W] -> class index target [B, H, W]
@@ -1048,7 +1056,8 @@ class Population:
         prediction_consistency = compute_prediction_consistency_(clean_preds, perturbed_preds)
         std_dev = compute_std_dev(miou_per_sample_all)
 
-        self.dm.setup(stage='fit')
+        
+        #self.dm.setup(stage='fit')
         return {
             "miou_clean": float(miou_clean),
             "miou_perturbed": float(miou_perturbed),
@@ -1063,8 +1072,6 @@ class Population:
             perturb_fn = reobench_perturbations[perturbation]
             
             severity = 5 # Worst severity in REOBench
-            if perturbation == "brightness_contrast":
-                severity = 2
             x = perturb_fn(x, severity=severity)
             return x
 

@@ -4,8 +4,8 @@ set -e
 CONFIG_FILE="config.ini"
 SESSION="nas_runs"
 
-PERTURBATIONS=("brightness_contrast" "gaussian_noise" "motion_blur")
-SEEDS=(41 42 43)
+PERTURBATIONS=("brightness_contrast") # "gaussian_noise" "motion_blur")
+SEEDS=(41)
 #PERTURBATIONS="brightness_contrast"
 #SEEDS=41
 
