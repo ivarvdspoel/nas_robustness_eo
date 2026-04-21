@@ -12,3 +12,7 @@ legacy*
 */logs*
 *.csv
 *.jsonl
+archive
+*.png
+project/old_results
+project/plots

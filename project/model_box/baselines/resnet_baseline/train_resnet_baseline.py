@@ -9,13 +9,13 @@ resnet = ResNet18UNet(in_channels=7, num_classes=4)
 task = SegmentationTask(resnet, use_focal=True)
 
 # Setup DataModule
-dm = SegmentationDataModule(root_dir='/local/s3167445/data', batch_size=16, num_workers=8)
+dm = SegmentationDataModule(root_dir='/tmp/ivanderspoel/burn_dataset', batch_size=16, num_workers=8)
 dm.setup(stage='test')  # load test dataset
 
 trainer = pl.Trainer(
     accelerator="gpu", 
     devices=[0], # Use GPU 0 as identified in your nvidia-smi
-    max_epochs=30,
+    max_epochs=10,
     precision=32#"16-mixed"
 
 )

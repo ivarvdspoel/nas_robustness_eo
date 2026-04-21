@@ -4,10 +4,8 @@ set -e
 CONFIG_FILE="config.ini"
 SESSION="nas_runs"
 
-PERTURBATIONS=("brightness_contrast") # "gaussian_noise" "motion_blur")
-SEEDS=(41)
-#PERTURBATIONS="brightness_contrast"
-#SEEDS=41
+PERTURBATIONS=("brightness_contrast" "motion_blur" "gaussian_noise")
+SEEDS=(42 42 42)
 
 # Safety check
 if [ ${#PERTURBATIONS[@]} -ne ${#SEEDS[@]} ]; then
@@ -15,7 +13,14 @@ if [ ${#PERTURBATIONS[@]} -ne ${#SEEDS[@]} ]; then
   exit 1
 fi
 
-tmux new-session -d -s $SESSION
+# Recreate session cleanly if it already exists
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "Session '$SESSION' already exists. Killing it first."
+  tmux kill-session -t "$SESSION"
+fi
+
+# Create one tmux session with one shell
+tmux new-session -d -s "$SESSION"
 
 for i in "${!PERTURBATIONS[@]}"; do
   P=${PERTURBATIONS[$i]}
@@ -29,9 +34,11 @@ for i in "${!PERTURBATIONS[@]}"; do
     --perturbation_type $P \
     --run_id $RUN_ID"
 
-  echo "Launching: $RUN_ID"
+  echo "Queueing: $RUN_ID"
 
-  tmux new-window -t $SESSION -n "$RUN_ID" "$CMD"
+  # Queue commands into the same tmux shell so they run one by one
+  tmux send-keys -t "$SESSION":0 "$CMD" C-m
 done
 
-echo "Done. Attach with: tmux attach -t $SESSION"
+echo "All experiments queued sequentially in tmux session '$SESSION'."
+echo "Attach with: tmux attach -t $SESSION"

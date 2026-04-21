@@ -20,7 +20,7 @@ from dataset_box.perturbation_methods.reobench_perturbations import *
 # =========================
 # Setup
 # =========================
-root_dir = '/local/s3167445/data'
+root_dir = "/tmp/ivanderspoel/burn_dataset"
 batch_size = 2
 num_workers = 4
 num_classes = 4
@@ -65,16 +65,34 @@ vit.to(device)
 vit.eval()
 models["ViT"] = vit
 
+# Brightness NAS
+brightness_nas = torch.jit.load('old_results/Results/generation_7_brightness_contrast/gen_7_id_4628723778656535459.pt', map_location=device)
+brightness_nas.to(device)
+brightness_nas.eval()
+models["Brightness_NAS"] = brightness_nas
+
+
+# Motion blur NAS
+motion_nas = torch.jit.load('old_results/Results/generation_8_motion_blur/gen_8_id_16327562415244101023.pt', map_location=device)
+motion_nas.to(device)
+motion_nas.eval()
+models["Motion_NAS"] = motion_nas
+
+# Gaussian noise NAS
+gaussian_nas = torch.jit.load('old_results/Results/generation_5_gaussian_noise/gen_5_id_14576165875384187168.pt', map_location=device)
+gaussian_nas.to(device)
+gaussian_nas.eval()
+models["Gaussian_NAS"] = gaussian_nas
 
 # =========================
 # Perturbation registry
 # =========================
 reobench_perturbations = {
-    # "gaussian_noise": add_gaussian_noise_batch_tensor,
-    # "salt_pepper": add_salt_pepper_batch_tensor,
+    #"gaussian_noise": add_gaussian_noise_batch_tensor,
+    #"salt_pepper": add_salt_pepper_batch_tensor,
     # "gaussian_blur": gaussian_blur_batch_tensor,
-    "motion_blur": motion_blur_batch_tensor,
-    "brightness_contrast": adjust_brightness_contrast_batch_tensor,
+    # "motion_blur": motion_blur_batch_tensor,
+    # "brightness_contrast": adjust_brightness_contrast_batch_tensor,
     "haze": add_haze_batch_tensor,
 }
 

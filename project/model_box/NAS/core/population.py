@@ -652,15 +652,14 @@ class Population:
         new_population = []
         self.generation += 1
 
-        #sorted_pop = self.elite_models()
+        sorted_pop = self.elite_models()
         #sorted_pop = list(self.population)
-        sorted_pop = [deepcopy(ind) for ind in self.population]
+        #sorted_pop = [deepcopy(ind) for ind in self.population]
 
-        assert len(sorted_pop) > 0, "No valid individuals available."
+        #assert len(sorted_pop) > 0, "No valid individuals available."
 
         self.topModels = sorted_pop[:k_best]
-        print("EVOLVING!")
-        print(self.topModels)
+
 
         mating_pool_size = max(1, int(np.floor(mating_pool_cutoff * self.n_individuals)))
         mating_pool = sorted_pop[:mating_pool_size].copy()
@@ -711,7 +710,9 @@ class Population:
         
         # 4. Add the best individuals from the previous generation
         new_population.extend(self.topModels)
-       
+        # Give new population models each a new id
+        for individual in new_population:
+            individual.id = np.uint64(np.random.randint(0, 2**64, dtype=np.uint64))
 
         assert len(new_population) == self.n_individuals, f"Population size is {len(new_population)}, expected {self.n_individuals}"
         self.population = new_population
@@ -1027,9 +1028,9 @@ class Population:
                 x = x.to(self.device)#, non_blocking=True)
                 y = y.to(self.device)#, non_blocking=True)
 
-                with torch.no_grad():
-                    logits = LM(x)                  # [B, 4, H, W]
-                preds = torch.argmax(logits, dim=1)   # [B, H, W]
+                #with torch.no_grad():
+                #    logits = LM(x)                  # [B, 4, H, W]
+                #preds = torch.argmax(logits, dim=1)   # [B, H, W]
 
                 x_perturbed = self.perturb_batch(x, perturbation=self.perturbation)
                 with torch.no_grad():
@@ -1071,7 +1072,7 @@ class Population:
         else:
             perturb_fn = reobench_perturbations[perturbation]
             
-            severity = 5 # Worst severity in REOBench
+            severity = random.randint(1, 5)
             x = perturb_fn(x, severity=severity)
             return x
 

@@ -9,18 +9,16 @@ import torch
 from pathlib import Path
 
 def main():
-    root_dir = "/local/s3167445/data"
+    root_dir = "/tmp/ivanderspoel/burn_dataset"
     batch_size = 8
-    num_workers = 4
+    num_workers = 2
     val_split = 0.3
-    remove_channel = None  # set to 0-6 if you want to drop one channel
 
     datamodule = SegmentationDataModule(
         root_dir=root_dir,
         batch_size=batch_size,
         num_workers=num_workers,
         val_split=val_split,
-        remove_channel=remove_channel,
     )
 
 
@@ -51,7 +49,7 @@ def main():
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
     trainer = pl.Trainer(
-        max_epochs=30,
+        max_epochs=20,
         accelerator="auto",
         devices=1,
         callbacks=[checkpoint_callback, lr_monitor],
@@ -63,7 +61,7 @@ def main():
 
     torch.save(
         task.model.state_dict(),
-        "model_box/saved_models/vit.pt"
+        "model_box/saved_models/vit_20epochs.pt"
     )
 
 

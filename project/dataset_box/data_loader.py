@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from pytorch_lightning import LightningDataModule
+import random
 
 from dataset_box.perturbation_methods.reobench_perturbations import *
 
@@ -128,10 +129,9 @@ class SegmentationDataset(Dataset):
             mask = self.transform(mask)
 
         # only augment training split, with probability p
-        chance = torch.rand(1).item()
+        #chance = torch.rand(1).item()
         if self.split == 'trainval' and self.perturbation_type not in ["clean", None]:
-            if chance < self.augment_p:
-                image = self.perturb_image(image)
+            image = self.perturb_image(image)
 
         return image, mask
 
@@ -141,7 +141,9 @@ class SegmentationDataset(Dataset):
             return image
 
         perturb_fn = reobench_perturbations[self.perturbation_type]
-        severity = 2 if self.perturbation_type == "brightness_contrast" else 5
+        
+        # Random severity between 1 and 5
+        severity = random.randint(1, 5)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         image = perturb_fn(image.unsqueeze(0), severity=severity).squeeze(0)
