@@ -17,12 +17,13 @@ reobench_perturbations = {
 }
 
 class SegmentationDataset(Dataset):
-    def __init__(self, root_dir, split='trainval', transform=None, augment_p=0.5, perturbation_type="clean"):
+    def __init__(self, root_dir, split='trainval', transform=None, augment_p=0.5, perturbation_type="clean", severity=5):
         self.root_dir = root_dir
         self.split = split
         self.transform = transform
         self.augment_p = augment_p
         self.perturbation_type = perturbation_type
+        self.severity = severity
 
         self.classes = ['Background', 'BurntArea', 'Cloud', 'Waterbodies']
         self.num_classes = len(self.classes)
@@ -142,11 +143,9 @@ class SegmentationDataset(Dataset):
 
         perturb_fn = reobench_perturbations[self.perturbation_type]
         
-        # Random severity between 1 and 5
-        severity = random.randint(1, 5)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        image = perturb_fn(image.unsqueeze(0), severity=severity).squeeze(0)
+        image = perturb_fn(image.unsqueeze(0), severity=self.severity).squeeze(0)
         return image.cpu()
 
 
@@ -159,6 +158,7 @@ class SegmentationDataModule(LightningDataModule):
         transform=None,
         val_split=0.3,
         perturbation_type=None,
+        severity=5
     ):
         super().__init__()
         self.root_dir = root_dir
@@ -172,6 +172,7 @@ class SegmentationDataModule(LightningDataModule):
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
+        self.severity = severity
 
         self.setup()
 
@@ -183,10 +184,7 @@ class SegmentationDataModule(LightningDataModule):
             return x
         else:
             perturb_fn = reobench_perturbations[perturbation]
-
-            severity = 5
-
-            x = perturb_fn(x, severity=severity)
+            x = perturb_fn(x, severity=self.severity)
             return x
             
     def expand_dataset_with_perturbations(self, dataset, perturbation_type=None, batch_size=None):
@@ -222,7 +220,8 @@ class SegmentationDataModule(LightningDataModule):
             split='trainval',
             transform=self.transform,
             augment_p=0.5,
-            perturbation_type=self.perturbation_type
+            perturbation_type=self.perturbation_type,
+            severity=self.severity
         )
 
         self.class_names = self.full_dataset.classes
@@ -245,6 +244,7 @@ class SegmentationDataModule(LightningDataModule):
                 split='test',
                 transform=self.transform,
                 augment_p=0.0,
+                seveirty=self.severity
             )
 
     def train_dataloader(self):

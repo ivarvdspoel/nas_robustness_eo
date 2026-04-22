@@ -33,6 +33,7 @@ parser.add_argument('--k_best', type=int, default=None, help='Number of best ind
 parser.add_argument('--task', type=str, default=None, help='Task type.')
 parser.add_argument('--perturbation_type', type=str, default=None, help='Perturbation method')
 parser.add_argument('--run_id', type=str, default=None, help='Unique ID for this population/run.')
+parser.add_argument('--severity', type=int, default=None, help='severity in perturbation function 1-5.')
 
 
 def main(args):
@@ -66,6 +67,8 @@ def main(args):
             config.set('GA', 'task', args.task)
         if args.perturbation_type is not None:
             config.set('Perturbation', 'type', args.perturbation_type)
+        if args.severity is not None:
+            config.set('Perturbation', 'severity', str(args.severity))
 
         seed = config.getint('Computation', 'seed')
         pl.seed_everything(seed=seed, workers=True)
@@ -86,7 +89,7 @@ def main(args):
         task = str(config['GA']['task'])
         max_params = int(config['GA']['max_parameters'])
         perturbation_type = config.get('Perturbation', 'type', fallback='clean')
-        
+        severity = config.getint('Perturbation', 'severity', fallback=5)
         
         print(perturbation_type)
         print(max_layers)
@@ -102,6 +105,7 @@ def main(args):
             transform=None,
             val_split=0.3,
             perturbation_type=perturbation_type,
+            severity=severity
         )
         pop = Population(
             n_individuals=n_individuals,
@@ -110,7 +114,8 @@ def main(args):
             save_directory=save_dir,
             max_parameters=max_params,
             perturbation=perturbation_type,
-            run_id=run_id
+            run_id=run_id,
+            severity=severity
         )
 
         pop._use_group_norm = False

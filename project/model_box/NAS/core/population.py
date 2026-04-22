@@ -75,7 +75,7 @@ class DummyProblem(Problem):
         pass
 
 class Population:
-    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, perturbation=None, run_id=0):
+    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, perturbation=None, run_id=0, severity=5):
         """
         Initialize a new population for the evolutionary neural architecture search.
         
@@ -104,6 +104,7 @@ class Population:
         self.n_individuals = n_individuals
         self.max_layers = max_layers
         self.max_parameters = max_parameters
+        self.severity=severity
         
         # State tracking
         self.generation = 0
@@ -1004,7 +1005,7 @@ class Population:
             "results": results
         }
 
-        with open(f"{self.run_id}_evolution_log.jsonl", "a") as f:
+        with open(f"{self.run_id}_s{self.severity}_evolution_log.jsonl", "a") as f:
             f.write(json.dumps(log_entry) + "\n")
 
 
@@ -1072,8 +1073,7 @@ class Population:
         else:
             perturb_fn = reobench_perturbations[perturbation]
             
-            severity = random.randint(1, 5)
-            x = perturb_fn(x, severity=severity)
+            x = perturb_fn(x, severity=self.severity)
             return x
 
     def train_generation(self, task='classification', lr=0.001, epochs=4, batch_size=32):
