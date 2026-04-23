@@ -130,9 +130,10 @@ class SegmentationDataset(Dataset):
             mask = self.transform(mask)
 
         # only augment training split, with probability p
-        #chance = torch.rand(1).item()
-        if self.split == 'trainval' and self.perturbation_type not in ["clean", None]:
-            image = self.perturb_image(image)
+        chance = torch.rand(1).item()
+        if (chance < self.augment_p):
+            if self.split == 'trainval' and self.perturbation_type not in ["clean", None]:
+                image = self.perturb_image(image)
 
         return image, mask
 
@@ -244,7 +245,7 @@ class SegmentationDataModule(LightningDataModule):
                 split='test',
                 transform=self.transform,
                 augment_p=0.0,
-                seveirty=self.severity
+                severity=self.severity
             )
 
     def train_dataloader(self):

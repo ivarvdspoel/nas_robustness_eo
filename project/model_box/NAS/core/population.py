@@ -1029,9 +1029,9 @@ class Population:
                 x = x.to(self.device)#, non_blocking=True)
                 y = y.to(self.device)#, non_blocking=True)
 
-                #with torch.no_grad():
-                #    logits = LM(x)                  # [B, 4, H, W]
-                #preds = torch.argmax(logits, dim=1)   # [B, H, W]
+                with torch.no_grad():
+                   logits = LM(x)                  # [B, 4, H, W]
+                preds = torch.argmax(logits, dim=1)   # [B, H, W]
 
                 x_perturbed = self.perturb_batch(x, perturbation=self.perturbation)
                 with torch.no_grad():
@@ -1106,7 +1106,7 @@ class Population:
 
         save_dir = os.path.join(
             self.save_directory,
-            f"generation_{gen}_{perturb}"
+            f"generation_{gen}_{self.severity}_{perturb}"
         )
         os.makedirs(save_dir, exist_ok=True)
 
