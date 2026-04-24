@@ -119,7 +119,7 @@ class Population:
         
         # Hardware
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.logger = self.setup_logger()
+        self.logger = self.setup_logger(enable_file_logging=False)
         
         self.perturbation = perturbation
 
@@ -127,45 +127,31 @@ class Population:
                          f"max_layers={max_layers}, max_parameters={max_parameters}, "
                          f"device={self.device}")
         
-    
     @staticmethod
-    def setup_logger(log_file='./logs/population.log', log_level=logging.DEBUG):
-        """
-        Set up a logger for the population module.
-
-        If the log file already exists, create a new one by appending a timestamp to the filename.
-
-        Parameters:
-            log_file (str): Path to the log file.
-            log_level (int): Logging level (e.g., logging.DEBUG, logging.INFO).
-
-        Returns:
-            logging.Logger: Configured logger instance.
-        """
-
-        # Ensure the directory for the log file exists
-        log_dir = os.path.dirname(log_file)
-        if log_dir and not os.path.exists(log_dir):
-            os.makedirs(log_dir, exist_ok=True)
-            
-        if os.path.exists(log_file):
-            base, ext = os.path.splitext(log_file)
-            timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
-            log_file = f"{base}_{timestamp}{ext}"
-
+    def setup_logger(log_file='./logs/population.log', log_level=logging.INFO, enable_file_logging=False):
         logger = logging.getLogger(__name__)
         logger.setLevel(log_level)
-        # Create file handler and set level to debug
-        file_handler = logging.FileHandler(log_file)
+        logger.propagate = False
+
+        # Clear old handlers to prevent duplicate logging
+        logger.handlers.clear()
+
+        if not enable_file_logging:
+            logger.addHandler(logging.NullHandler())
+            return logger
+
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+        file_handler = logging.FileHandler(log_file, mode="a")
         file_handler.setLevel(log_level)
-        # Create formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        # Add formatter to file handler
+
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
         file_handler.setFormatter(formatter)
-        # Add file handler to logger
+
         logger.addHandler(file_handler)
         return logger
-    
         
     def initial_poll(self):
         """

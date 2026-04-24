@@ -6,7 +6,7 @@ SESSION="nas_runs"
 
 PERTURBATION="brightness_contrast"
 SEED=41
-SEVERITIES=(1 2 3 4 5)
+SEVERITIES=(4 5)
 
 # Kill existing session if needed
 if tmux has-session -t "$SESSION" 2>/dev/null; then
