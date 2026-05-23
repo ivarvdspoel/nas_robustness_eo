@@ -8,6 +8,8 @@ import subprocess
 import tempfile
 import shutil
 
+import time
+
 import gc
 
 from ..blocks.heads import MultiInputClassifier
@@ -16,7 +18,7 @@ from .generic_unet import GenericUNetNetwork
 from ..opt.evo import single_point_crossover, gene_mutation
 from .generic_lightning_module import GenericLightningSegmentationNetwork, GenericLightningNetwork
 
-from evaluation_box.evaluation_functions import compute_miou_, compute_prediction_consistency_, compute_stats_and_outliers, compute_miou_per_sample, compute_std_dev
+from src.NAS.train.evaluation_functions import compute_miou, compute_prediction_consistency
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 from pymoo.operators.survival.rank_and_crowding.metrics import get_crowding_function
 from pymoo.operators.survival.rank_and_crowding import RankAndCrowding
@@ -43,16 +45,6 @@ import torch.multiprocessing as mp
 
 
 
-from dataset_box.perturbation_methods.reobench_perturbations import *
-
-reobench_perturbations = {
-    "gaussian_noise": add_gaussian_noise_batch_tensor,
-    "salt_pepper": add_salt_pepper_batch_tensor,
-    "gaussian_blur": gaussian_blur_batch_tensor,
-    "motion_blur": motion_blur_batch_tensor,
-    "brightness_contrast": adjust_brightness_contrast_batch_tensor,
-    "haze": add_haze_batch_tensor,
-}
 
 
 try:
@@ -74,8 +66,41 @@ class DummyProblem(Problem):
     def _evaluate(self, X, out, *args, **kwargs):
         pass
 
+
+def _update_confmat(preds, targets, num_classes):
+    """
+    preds:   [B, H, W] long
+    targets: [B, H, W] long
+    """
+    valid = (targets >= 0) & (targets < num_classes)
+
+    inds = num_classes * targets[valid] + preds[valid]
+    confmat = torch.bincount(
+        inds,
+        minlength=num_classes * num_classes
+    ).reshape(num_classes, num_classes)
+
+    return confmat
+
+
+def _miou_from_confmat(confmat):
+    confmat = confmat.float()
+
+    intersection = torch.diag(confmat)
+    union = (
+        confmat.sum(dim=1) +  # target pixels per class
+        confmat.sum(dim=0) -  # predicted pixels per class
+        intersection
+    )
+
+    valid = union > 0
+    if valid.sum() == 0:
+        return torch.tensor(0.0, device=confmat.device)
+
+    return (intersection[valid] / union[valid]).mean()
+
 class Population:
-    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, perturbation=None, run_id=0, severity=5):
+    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, run_name=""):
         """
         Initialize a new population for the evolutionary neural architecture search.
         
@@ -104,13 +129,12 @@ class Population:
         self.n_individuals = n_individuals
         self.max_layers = max_layers
         self.max_parameters = max_parameters
-        self.severity=severity
         
         # State tracking
         self.generation = 0
         self.population = []  # Initialize empty population
         self.df = None  # Will hold population stats as DataFrame
-        self.run_id = run_id
+        self.run_name = run_name
         # File storage
         self.save_directory = save_directory or "./models_traced"
         # Create directories if they don't exist
@@ -119,16 +143,15 @@ class Population:
         
         # Hardware
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.logger = self.setup_logger(enable_file_logging=False)
+        self.logger = self.setup_logger(enable_file_logging=True)
         
-        self.perturbation = perturbation
 
         self.logger.info(f"Initialized population with {n_individuals} individuals, "
                          f"max_layers={max_layers}, max_parameters={max_parameters}, "
                          f"device={self.device}")
         
     @staticmethod
-    def setup_logger(log_file='./logs/population.log', log_level=logging.INFO, enable_file_logging=False):
+    def setup_logger(log_file='./logs/population.log', log_level=logging.INFO, enable_file_logging=True):
         logger = logging.getLogger(__name__)
         logger.setLevel(log_level)
         logger.propagate = False
@@ -640,10 +663,6 @@ class Population:
         self.generation += 1
 
         sorted_pop = self.elite_models()
-        #sorted_pop = list(self.population)
-        #sorted_pop = [deepcopy(ind) for ind in self.population]
-
-        #assert len(sorted_pop) > 0, "No valid individuals available."
 
         self.topModels = sorted_pop[:k_best]
 
@@ -961,7 +980,8 @@ class Population:
         print("Strategy in use:", trainer.strategy)
         trainer.fit(LM, self.dm)
         
-        
+        individual.id = np.uint64(np.random.randint(0, 2**64, dtype=np.uint64))
+
         results = self.evaluate_individual(LM, task=task)
         
         self.log_results(individual, results)
@@ -973,7 +993,7 @@ class Population:
         individual.miou = results["miou_clean"]
         individual.metric = results["miou_clean"]
         individual.prediction_consistency = results["prediction_consistency"]
-        individual.std_dev = results["std_dev"]
+        individual.process_time = results["process_time"]
         individual.set_objectives()
 
         self._checkpoint()
@@ -991,76 +1011,90 @@ class Population:
             "results": results
         }
 
-        with open(f"{self.run_id}_s{self.severity}_evolution_log.jsonl", "a") as f:
+        with open(f"{self.run_name}_evolution_log.jsonl", "a") as f:
             f.write(json.dumps(log_entry) + "\n")
 
 
-    def evaluate_individual(self, LM, task):
+    def perturb_batch(self, x, perturbation="None"):
+        # TODO
+        return x
+
+    def evaluate_individual(self, LM, task=None):
+        print("Evaluating individual...")
 
         LM.eval()
         LM.to(self.device)
 
-        clean_preds = []
-        perturbed_preds = []
-        targets = []
-        miou_per_sample_all = []
+        num_classes = 4
 
-        # Make sure test dataset exists
-        self.dm.setup(stage='test')
+        clean_confmat = torch.zeros(
+            num_classes, num_classes, device=self.device, dtype=torch.long
+        )
+        pert_confmat = torch.zeros(
+            num_classes, num_classes, device=self.device, dtype=torch.long
+        )
+
+        consistency_correct = torch.zeros((), device=self.device, dtype=torch.long)
+        consistency_total = torch.zeros((), device=self.device, dtype=torch.long)
+
         test_loader = self.dm.test_dataloader()
 
-        with torch.no_grad():
+        process_time = 0.0
+
+        with torch.inference_mode():
             for batch_idx, batch in enumerate(test_loader):
                 x, y = batch
-                x = x.to(self.device)#, non_blocking=True)
-                y = y.to(self.device)#, non_blocking=True)
 
-                with torch.no_grad():
-                   logits = LM(x)                  # [B, 4, H, W]
-                preds = torch.argmax(logits, dim=1)   # [B, H, W]
+                x = x.to(self.device, non_blocking=True)
+                y = y.to(self.device, non_blocking=True)
 
-                x_perturbed = self.perturb_batch(x, perturbation=self.perturbation)
-                with torch.no_grad():
-                    logits_pert = LM(x_perturbed)         # [B, 4, H, W]
-                preds_pert = torch.argmax(logits_pert, dim=1)   # [B, H, W]
-
-                # Convert one-hot target [B, 4, H, W] -> class index target [B, H, W]
+                # One-hot target [B, 4, H, W] -> class target [B, H, W]
                 y_indices = torch.argmax(y, dim=1)
 
-                clean_preds.append(preds.detach().cpu())
-                perturbed_preds.append(preds_pert.detach().cpu())
-                targets.append(y_indices.detach().cpu())
+                x_perturbed = self.perturb_batch(x, perturbation="clean")
+                # Or use your actual perturbation, e.g.
+                # x_perturbed = self.perturb_batch(x, perturbation="gaussian_noise")
 
-                miou_per_sample = compute_miou_per_sample(preds_pert, y_indices)
-                miou_per_sample_all.append(miou_per_sample.detach().cpu())
+                # Faster if memory allows: one model call instead of two
+                x_all = torch.cat([x, x_perturbed], dim=0)
 
-        clean_preds = torch.cat(clean_preds, dim=0)
-        perturbed_preds = torch.cat(perturbed_preds, dim=0)
-        targets = torch.cat(targets, dim=0)
-        miou_per_sample_all = torch.cat(miou_per_sample_all, dim=0)
+                if self.device.type == "cuda":
+                    start = torch.cuda.Event(enable_timing=True)
+                    end = torch.cuda.Event(enable_timing=True)
 
-        miou_clean = compute_miou_(clean_preds, targets)
-        miou_perturbed = compute_miou_(perturbed_preds, targets)
-        prediction_consistency = compute_prediction_consistency_(clean_preds, perturbed_preds)
-        std_dev = compute_std_dev(miou_per_sample_all)
+                    start.record()
+                    logits_all = LM(x_all)
+                    end.record()
 
-        
-        #self.dm.setup(stage='fit')
+                    torch.cuda.synchronize()
+                    process_time += start.elapsed_time(end) / 1000.0
+                else:
+                    t1 = time.time()
+                    logits_all = LM(x_all)
+                    t2 = time.time()
+                    process_time += t2 - t1
+
+                logits, logits_pert = torch.chunk(logits_all, chunks=2, dim=0)
+
+                preds = torch.argmax(logits, dim=1)
+                preds_pert = torch.argmax(logits_pert, dim=1)
+
+                clean_confmat += _update_confmat(preds, y_indices, num_classes)
+                pert_confmat += _update_confmat(preds_pert, y_indices, num_classes)
+
+                consistency_correct += (preds == preds_pert).sum()
+                consistency_total += preds.numel()
+
+        miou_clean = _miou_from_confmat(clean_confmat)
+        miou_perturbed = _miou_from_confmat(pert_confmat)
+        prediction_consistency = consistency_correct.float() / consistency_total.float()
+
         return {
-            "miou_clean": float(miou_clean),
-            "miou_perturbed": float(miou_perturbed),
-            "prediction_consistency": float(prediction_consistency),
-            "std_dev": float(std_dev),
+            "miou_clean": float(miou_clean.detach().cpu()),
+            "miou_perturbed": float(miou_perturbed.detach().cpu()),
+            "prediction_consistency": float(prediction_consistency.detach().cpu()),
+            "process_time": float(process_time),
         }
-
-    def perturb_batch(self, x, perturbation="clean"):
-        if perturbation == "clean" or perturbation == None:
-            return x
-        else:
-            perturb_fn = reobench_perturbations[perturbation]
-            
-            x = perturb_fn(x, severity=self.severity)
-            return x
 
     def train_generation(self, task='classification', lr=0.001, epochs=4, batch_size=32):
         """
@@ -1088,11 +1122,11 @@ class Population:
         individual = self.population[idx]
         gen = self.generation
         ind_id = int(individual.id)
-        perturb = self.perturbation if self.perturbation not in [None, ""] else "clean"
+        #perturb = self.perturbation if self.perturbation not in [None, ""] else "clean"
 
         save_dir = os.path.join(
             self.save_directory,
-            f"generation_{gen}_{self.severity}_{perturb}"
+            f"generation_{gen}_{self.run_name}"
         )
         os.makedirs(save_dir, exist_ok=True)
 

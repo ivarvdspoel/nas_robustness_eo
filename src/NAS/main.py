@@ -5,15 +5,16 @@ pd.set_option('display.max_colwidth', None)
 import torch
 import pytorch_lightning as pl
 import numpy as np
-from model_box.NAS.core.population import Population
-from dataset_box.data_loader import SegmentationDataModule
+from src.NAS.core.population import Population
+from src.data_loader.data_loader import PhiSatSegDataModule
 
 import argparse, os, sys
 cwd = os.getcwd()
 
-bs = 8
-nw = 3
-root_dir = "/tmp/ivanderspoel/burn_dataset"
+bs = 32
+nw = 4
+image_paths = "/shared/home/ivanderspoel/msc_thesis/data/segmentation_dataset_v1/images_npy"
+mask_paths = "/shared/home/ivanderspoel/msc_thesis/data/segmentation_dataset_v1/masks_npy"
 
 # Argument parser
 parser = argparse.ArgumentParser(description="Run the PyNAS genetic algorithm for neural architecture search.")
@@ -31,9 +32,7 @@ parser.add_argument('--batch_size', type=int, default=None, help='Batch size for
 parser.add_argument('--n_random', type=int, default=None, help='Number of random individuals per generation.')
 parser.add_argument('--k_best', type=int, default=None, help='Number of best individuals to keep.')
 parser.add_argument('--task', type=str, default=None, help='Task type.')
-parser.add_argument('--perturbation_type', type=str, default=None, help='Perturbation method')
-parser.add_argument('--run_id', type=str, default=None, help='Unique ID for this population/run.')
-parser.add_argument('--severity', type=int, default=None, help='severity in perturbation function 1-5.')
+parser.add_argument('--run_name', type=str, default=None, help='Name to classify the type of run.')
 
 
 def main(args):
@@ -65,16 +64,12 @@ def main(args):
             config.set('GA', 'k_best', str(args.k_best))
         if args.task is not None:
             config.set('GA', 'task', args.task)
-        if args.perturbation_type is not None:
-            config.set('Perturbation', 'type', args.perturbation_type)
-        if args.severity is not None:
-            config.set('Perturbation', 'severity', str(args.severity))
 
         seed = config.getint('Computation', 'seed')
         pl.seed_everything(seed=seed, workers=True)
         torch.set_float32_matmul_precision("medium")
 
-        save_dir = os.path.join(cwd, 'Results')
+        save_dir = os.path.join(cwd, 'results')
         os.makedirs(save_dir, exist_ok=True)
 
         max_layers = int(config['NAS']['max_layers'])
@@ -88,34 +83,30 @@ def main(args):
         k_best = int(config['GA']['k_best'])
         task = str(config['GA']['task'])
         max_params = int(config['GA']['max_parameters'])
-        perturbation_type = config.get('Perturbation', 'type', fallback='clean')
-        severity = config.getint('Perturbation', 'severity', fallback=5)
         
-        print(perturbation_type)
-        print(max_layers)
-        if args.run_id is not None:
-            run_id = args.run_id
+        if args.run_name is not None:
+            run_name = args.run_name
         else:
-            run_id = str(np.uint64(np.random.randint(0, 2**64, dtype=np.uint64)))
-
-        dm = SegmentationDataModule(
-            root_dir=root_dir,
+            run_name = str(np.uint64(np.random.randint(0, 2**64, dtype=np.uint64)))
+        
+        
+        dm = PhiSatSegDataModule(
+            image_dir=image_paths,
+            mask_dir=mask_paths,
             batch_size=bs,
+            val_split=0.2,
             num_workers=nw,
-            transform=None,
-            val_split=0.3,
-            perturbation_type=perturbation_type,
-            severity=severity
         )
+
+        dm.setup()
+
         pop = Population(
             n_individuals=n_individuals,
             max_layers=max_layers,
             dm=dm,
             save_directory=save_dir,
             max_parameters=max_params,
-            perturbation=perturbation_type,
-            run_id=run_id,
-            severity=severity
+            run_name=run_name,
         )
 
         pop._use_group_norm = False

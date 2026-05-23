@@ -32,6 +32,7 @@ class Individual:
         self.metric = None   # optional alias for compatibility
         self.prediction_consistency = None
         self.std_dev = None
+        self.process_time = None
 
         # legacy field, no longer used for sorting
         self.fitness = None
@@ -52,7 +53,7 @@ class Individual:
         if (
             self.miou is None
             or self.prediction_consistency is None
-            or self.std_dev is None
+            or self.process_time is None
         ):
             self.objectives = None
             return None
@@ -60,7 +61,7 @@ class Individual:
         self.objectives = [
             -float(self.miou),
             -float(self.prediction_consistency),
-            float(self.std_dev),
+            float(self.process_time)
         ]
         return self.objectives
 
@@ -87,6 +88,7 @@ class Individual:
         new_individual.metric = self.metric
         new_individual.prediction_consistency = self.prediction_consistency
         new_individual.std_dev = self.std_dev
+        new_individual.process_time = self.process_time
 
         new_individual.fitness = self.fitness
         new_individual.objectives = deepcopy(self.objectives)

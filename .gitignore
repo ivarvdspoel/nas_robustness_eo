@@ -9,6 +9,7 @@ legacy*
 *.pkl
 *.log
 */Results/*
+*/results/*
 */logs*
 *.csv
 *.jsonl
@@ -16,3 +17,4 @@ archive
 *.png
 project/old_results
 project/plots
+data

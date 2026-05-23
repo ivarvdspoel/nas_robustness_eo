@@ -8,7 +8,7 @@ from torchmetrics import MeanSquaredError
 
 import os 
 from datetime import datetime
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from ..train.losses import CategoricalCrossEntropyLoss, FocalLoss
 from ..train.custom_iou import calculate_iou
@@ -107,14 +107,14 @@ class GenericLightningNetwork(pl.LightningModule):
         return loss
 
 
-    def on_test_end(self):
-        self.conf_matrix.plot()  # to plot and save confusion matrix
-        plt.xlabel('Prediction')
-        plt.ylabel('Class')
-        current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        os.makedirs(rf"./logs/tb_logs", exist_ok=True)
-        plt.savefig(rf"./logs/tb_logs/confusion_matrix_{current_datetime}.png")
-        plt.show()
+    # def on_test_end(self):
+    #     self.conf_matrix.plot()  # to plot and save confusion matrix
+    #     plt.xlabel('Prediction')
+    #     plt.ylabel('Class')
+    #     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    #     os.makedirs(rf"./logs/tb_logs", exist_ok=True)
+    #     plt.savefig(rf"./logs/tb_logs/confusion_matrix_{current_datetime}.png")
+    #     plt.show()
 
     def _common_step(self, batch, _):
         x, y = batch
