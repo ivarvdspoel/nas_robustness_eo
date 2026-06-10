@@ -18,3 +18,5 @@ archive
 project/old_results
 project/plots
 data
+results
+lightning_logs

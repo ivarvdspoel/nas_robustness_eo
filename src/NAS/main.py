@@ -6,16 +6,13 @@ import torch
 import pytorch_lightning as pl
 import numpy as np
 from src.NAS.core.population import Population
-from src.data_loader.data_loader import PhiSatSegDataModule
+from src.data_loader.data_loader import PhiSatSegDataModule, Sentinel2SegDataModule
 
 import argparse, os, sys
 cwd = os.getcwd()
 
 bs = 32
 nw = 4
-image_paths = "/shared/home/ivanderspoel/msc_thesis/data/segmentation_dataset_v1/images_npy"
-mask_paths = "/shared/home/ivanderspoel/msc_thesis/data/segmentation_dataset_v1/masks_npy"
-
 # Argument parser
 parser = argparse.ArgumentParser(description="Run the PyNAS genetic algorithm for neural architecture search.")
 parser.add_argument('--gen', type=int, default=None, help='Generation to load and start NAS.')
@@ -32,8 +29,16 @@ parser.add_argument('--batch_size', type=int, default=None, help='Batch size for
 parser.add_argument('--n_random', type=int, default=None, help='Number of random individuals per generation.')
 parser.add_argument('--k_best', type=int, default=None, help='Number of best individuals to keep.')
 parser.add_argument('--task', type=str, default=None, help='Task type.')
+parser.add_argument('--perturbation', type=str, default=None, help='Perturbation type.')
+parser.add_argument('--strength', type=float, default=None, help='Strength of perturbation.')
 parser.add_argument('--run_name', type=str, default=None, help='Name to classify the type of run.')
-
+parser.add_argument(
+    '--dataset',
+    type=str,
+    choices=['phisat2', 'sentinel2'],
+    default='sentinel2',
+    help='Dataset/datamodule to use: phisat2 or sentinel2.'
+)
 
 def main(args):
     try:
@@ -64,6 +69,21 @@ def main(args):
             config.set('GA', 'k_best', str(args.k_best))
         if args.task is not None:
             config.set('GA', 'task', args.task)
+        if args.perturbation is not None:
+            config.set('Perturbation', 'perturbation', args.perturbation)
+
+        if args.strength is not None:
+            config.set('Perturbation', 'strength', str(args.strength))
+
+        if args.dataset == "phisat2":
+            image_paths = "/shared/home/ivanderspoel/scratch/segmentation_dataset_v1/images_phisat2_npy"
+            mask_paths = "/shared/home/ivanderspoel/scratch/segmentation_dataset_v1/masks_phisat2_npy"
+            DataModuleClass = PhiSatSegDataModule
+
+        elif args.dataset == "sentinel2":
+            image_paths = "/shared/home/ivanderspoel/scratch/segmentation_dataset_v1/images_s2_npy"
+            mask_paths = "/shared/home/ivanderspoel/scratch/segmentation_dataset_v1/masks_s2_npy"
+            DataModuleClass = Sentinel2SegDataModule
 
         seed = config.getint('Computation', 'seed')
         pl.seed_everything(seed=seed, workers=True)
@@ -83,6 +103,8 @@ def main(args):
         k_best = int(config['GA']['k_best'])
         task = str(config['GA']['task'])
         max_params = int(config['GA']['max_parameters'])
+        perturbation = str(config['Perturbation']['perturbation'])
+        strength = float(config['Perturbation']['strength'])
         
         if args.run_name is not None:
             run_name = args.run_name
@@ -90,15 +112,17 @@ def main(args):
             run_name = str(np.uint64(np.random.randint(0, 2**64, dtype=np.uint64)))
         
         
-        dm = PhiSatSegDataModule(
+        dm = DataModuleClass(
             image_dir=image_paths,
             mask_dir=mask_paths,
             batch_size=bs,
             val_split=0.2,
             num_workers=nw,
+            perturbation=perturbation,
+            strength=strength
         )
 
-        dm.setup()
+        dm.setup(stage='fit')
 
         pop = Population(
             n_individuals=n_individuals,
@@ -107,6 +131,8 @@ def main(args):
             save_directory=save_dir,
             max_parameters=max_params,
             run_name=run_name,
+            perturbation=perturbation,
+            strength=strength
         )
 
         pop._use_group_norm = False

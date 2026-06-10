@@ -18,6 +18,9 @@ from .generic_unet import GenericUNetNetwork
 from ..opt.evo import single_point_crossover, gene_mutation
 from .generic_lightning_module import GenericLightningSegmentationNetwork, GenericLightningNetwork
 
+
+
+from src.perturbation_methods.perturbation_methods import *
 from src.NAS.train.evaluation_functions import compute_miou, compute_prediction_consistency
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 from pymoo.operators.survival.rank_and_crowding.metrics import get_crowding_function
@@ -100,7 +103,7 @@ def _miou_from_confmat(confmat):
     return (intersection[valid] / union[valid]).mean()
 
 class Population:
-    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, run_name=""):
+    def __init__(self, n_individuals, max_layers, dm, max_parameters=100_000, save_directory=None, run_name="", perturbation="clean", strength=0):
         """
         Initialize a new population for the evolutionary neural architecture search.
         
@@ -143,8 +146,10 @@ class Population:
         
         # Hardware
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.logger = self.setup_logger(enable_file_logging=True)
+        self.logger = self.setup_logger(enable_file_logging=False)
         
+        self.perturbation = perturbation
+        self.strength = strength
 
         self.logger.info(f"Initialized population with {n_individuals} individuals, "
                          f"max_layers={max_layers}, max_parameters={max_parameters}, "
@@ -1014,10 +1019,84 @@ class Population:
         with open(f"{self.run_name}_evolution_log.jsonl", "a") as f:
             f.write(json.dumps(log_entry) + "\n")
 
+    def perturb_batch(self, x):
+        """
+        Perturb a batch x using self.perturbation and self.strength.
 
-    def perturb_batch(self, x, perturbation="None"):
-        # TODO
-        return x
+        Supported perturbations:
+            "noise"        -> SNR degradation, strength = snr_factor
+            "blur"         -> MTF@Nyquist, strength = mtf_nyquist
+            "misalignment" -> max band shift in pixels, strength = max_shift_px
+            "haze"         -> transmission t, strength = t
+            "brightness"   -> multiplicative factor alpha, strength = alpha
+
+        Input:
+            x: torch.Tensor, shape (B, C, H, W)
+
+        Output:
+            torch.Tensor, same shape/device/dtype as x
+        """
+        perturbation = self.perturbation
+        strength = self.strength
+
+        if perturbation is None or perturbation == "none":
+            return x
+
+        device = x.device
+        dtype = x.dtype
+
+        x_np = x.detach().cpu().numpy().astype(np.float32)
+        x_out = np.empty_like(x_np, dtype=np.float32)
+
+        for i in range(x_np.shape[0]):
+            xi = x_np[i]
+
+            if perturbation == "noise":
+                xi_out = perturb_snr(
+                    xi,
+                    snr_factor=float(strength),
+                    use_official_lref=True,
+                    seed=None,
+                )
+
+            elif perturbation == "blur":
+                xi_out = perturb_mtf(
+                    xi,
+                    mtf_nyquist=float(strength),
+                )
+
+            elif perturbation == "misalignment":
+               # reference_band = 0 if xi.shape[0] == 8 else None TODO has to be red band - fix this in perturbation function code
+                xi_out = perturb_band_misalignment(
+                    xi,
+                    max_shift_px=float(strength),
+                    #reference_band=reference_band,
+                    seed=None,
+                )
+
+            elif perturbation == "haze":
+                xi_out = perturb_haze(
+                    xi,
+                    t=float(strength),
+                    atmospheric_light="p95",
+                )
+
+            elif perturbation == "brightness":
+                xi_out = perturb_brightness(
+                    xi,
+                    alpha=float(strength),
+                )
+
+            else:
+                raise ValueError(
+                    f"Unknown perturbation {perturbation!r}. "
+                    "Expected one of: 'noise', 'blur', 'misalignment', "
+                    "'haze', 'brightness', 'none'."
+                )
+
+            x_out[i] = xi_out.astype(np.float32)
+
+        return torch.from_numpy(x_out).to(device=device, dtype=dtype)
 
     def evaluate_individual(self, LM, task=None):
         print("Evaluating individual...")
@@ -1037,25 +1116,32 @@ class Population:
         consistency_correct = torch.zeros((), device=self.device, dtype=torch.long)
         consistency_total = torch.zeros((), device=self.device, dtype=torch.long)
 
+        self.dm.setup(stage="test")
         test_loader = self.dm.test_dataloader()
 
         process_time = 0.0
 
         with torch.inference_mode():
             for batch_idx, batch in enumerate(test_loader):
+                # raw/un-normalized batch
                 x, y = batch
 
                 x = x.to(self.device, non_blocking=True)
                 y = y.to(self.device, non_blocking=True)
 
-                # One-hot target [B, 4, H, W] -> class target [B, H, W]
                 y_indices = torch.argmax(y, dim=1)
 
-                x_perturbed = self.perturb_batch(x, perturbation="clean")
-                # Or use your actual perturbation, e.g.
-                # x_perturbed = self.perturb_batch(x, perturbation="gaussian_noise")
+                # Always create both versions from raw x
+                if self.perturbation != "clean":
+                    x_perturbed = self.perturb_batch(x)
+                else:
+                    x_perturbed = x.clone()
 
-                # Faster if memory allows: one model call instead of two
+                # Normalize after perturbation
+                x = self.dm.test_dataset.normalize_batch(x)
+                x_perturbed = self.dm.test_dataset.normalize_batch(x_perturbed)
+
+                # Now both are normalized
                 x_all = torch.cat([x, x_perturbed], dim=0)
 
                 if self.device.type == "cuda":
